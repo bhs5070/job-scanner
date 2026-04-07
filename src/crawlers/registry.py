@@ -1,10 +1,12 @@
 from src.crawlers.base import BaseCrawler
 from src.crawlers.sites.rocketpunch import RocketPunchCrawler
+from src.crawlers.sites.saramin import SaraminCrawler
 from src.crawlers.sites.wanted import WantedCrawler
 
 CRAWLER_REGISTRY: dict[str, type[BaseCrawler]] = {
     "wanted": WantedCrawler,
     "rocketpunch": RocketPunchCrawler,
+    "saramin": SaraminCrawler,
 }
 
 
