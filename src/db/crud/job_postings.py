@@ -91,3 +91,42 @@ def get_job_posting_by_url(db: Session, source_url: str) -> JobPosting | None:
     """Get a single job posting by its source URL."""
     stmt = select(JobPosting).where(JobPosting.source_url == source_url)
     return db.scalars(stmt).first()
+
+
+def get_tech_stack_counts(db: Session, limit: int = 20) -> list[tuple[str, int]]:
+    """Aggregate tech stack counts from active job postings."""
+    stmt = select(JobPosting.tech_stack).where(
+        JobPosting.tech_stack.is_not(None),
+        JobPosting.is_active.is_(True),
+    )
+    rows = db.scalars(stmt).all()
+
+    tech_counts: dict[str, int] = {}
+    for stack in rows:
+        if isinstance(stack, list):
+            for tech_raw in stack:
+                tech = tech_raw.strip()
+                if tech:
+                    tech_counts[tech] = tech_counts.get(tech, 0) + 1
+
+    sorted_techs = sorted(tech_counts.items(), key=lambda x: x[1], reverse=True)
+    return sorted_techs[:limit]
+
+
+def get_posting_stats(db: Session) -> dict:
+    """Get basic posting statistics."""
+    from sqlalchemy import func
+
+    total = db.scalar(
+        select(func.count(JobPosting.id)).where(JobPosting.is_active.is_(True))
+    )
+    by_site = db.execute(
+        select(JobPosting.source_site, func.count(JobPosting.id))
+        .where(JobPosting.is_active.is_(True))
+        .group_by(JobPosting.source_site)
+    ).all()
+
+    return {
+        "total": total or 0,
+        "by_site": {site: count for site, count in by_site},
+    }
