@@ -6,7 +6,9 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
+from src.api.routers.auth import router as auth_router
 from src.api.routers.chat import router as chat_router
+from src.api.routers.profile import router as profile_router
 
 FRONTEND_DIR = Path(__file__).parent.parent.parent / "frontend"
 
@@ -27,7 +29,9 @@ app.add_middleware(
 )
 
 # API routes
+app.include_router(auth_router)
 app.include_router(chat_router)
+app.include_router(profile_router)
 
 # Serve frontend static files
 app.mount("/", StaticFiles(directory=FRONTEND_DIR, html=True), name="frontend")

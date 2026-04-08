@@ -29,6 +29,11 @@ class Settings(BaseSettings):
     CRAWL_USER_AGENT: str = "JobScanner/1.0"
     TARGET_KEYWORDS: list[str] = ["AI Engineer", "ML Engineer", "백엔드"]
 
+    # Google OAuth
+    GOOGLE_CLIENT_ID: str = ""
+    GOOGLE_CLIENT_SECRET: str = ""
+    GOOGLE_REDIRECT_URI: str = "http://localhost:8000/api/auth/google/callback"
+
     # General
     LOG_LEVEL: str = "INFO"
 
