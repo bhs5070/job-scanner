@@ -39,7 +39,7 @@ async function init() {
             currentUser = { name: data.name, email: data.email, picture: data.picture };
             localStorage.setItem("jobscanner_user", JSON.stringify(currentUser));
             showLoggedInState();
-            if (!savedProfile) openProfileModal();
+            if (!savedProfile && !localStorage.getItem("jobscanner_profile_completed")) openProfileModal();
         } else {
             localStorage.removeItem("jobscanner_user");
         }
@@ -291,6 +291,7 @@ profileForm.addEventListener("submit", async (e) => {
     };
 
     localStorage.setItem("jobscanner_profile", JSON.stringify(userProfile));
+    localStorage.setItem("jobscanner_profile_completed", "true");
 
     // Upload resume if selected
     if (resumeFile.files[0]) {
