@@ -16,6 +16,10 @@ const userSection = document.getElementById("user-section");
 const googleLoginBtn = document.getElementById("google-login-btn");
 const logoutBtn = document.getElementById("logout-btn");
 
+const headerActions = document.getElementById("header-actions");
+const editProfileBtn = document.getElementById("edit-profile-btn");
+const settingsLogoutBtn = document.getElementById("settings-logout-btn");
+
 let sessionId = null;
 let currentUser = null;
 let userProfile = null;
@@ -86,6 +90,7 @@ function showLoggedInState() {
     document.getElementById("user-email").textContent = currentUser.email;
     profileBtn.classList.add("visible");
 
+    updateHeaderTabs();
     const avatarEl = document.getElementById("user-avatar");
     avatarEl.textContent = "";
     const isHttps = currentUser.picture?.startsWith("https://");
@@ -106,7 +111,9 @@ logoutBtn.addEventListener("click", () => {
     localStorage.removeItem("jobscanner_profile");
     loginSection.style.display = "";
     userSection.classList.remove("logged-in");
-    profileBtn.classList.remove("visible");
+    updateHeaderTabs();
+    document.getElementById("tab-chat").click();
+    fetch("/api/auth/logout", { method: "POST" }).catch(() => {});
 });
 
 // === Profile Modal ===
@@ -294,13 +301,7 @@ profileForm.addEventListener("submit", async (e) => {
     }
 
     closeProfileModal();
-
-    // Send profile context to chat
-    const profileSummary = buildProfileSummary();
-    if (profileSummary) {
-        inputEl.value = profileSummary;
-        sendMessage();
-    }
+    updateMyPageProfile();
 });
 
 async function uploadFile(file, type) {
@@ -526,6 +527,90 @@ async function sendMessage() {
         setLoading(false);
         inputEl.focus();
     }
+}
+
+// === View / Tab Switching ===
+document.querySelectorAll(".header-tab").forEach((tab) => {
+    tab.addEventListener("click", () => {
+        document.querySelectorAll(".header-tab").forEach((t) => t.classList.remove("active"));
+        tab.classList.add("active");
+
+        const view = tab.dataset.view;
+        document.getElementById("view-chat").classList.toggle("hidden", view !== "chat");
+        document.getElementById("view-mypage").classList.toggle("hidden", view !== "mypage");
+
+        if (view === "mypage") updateMyPageProfile();
+    });
+});
+
+// Mypage sub-tabs
+document.querySelectorAll(".mypage-tab").forEach((tab) => {
+    tab.addEventListener("click", () => {
+        document.querySelectorAll(".mypage-tab").forEach((t) => t.classList.remove("active"));
+        tab.classList.add("active");
+
+        document.querySelectorAll(".mypage-panel").forEach((p) => p.classList.add("hidden"));
+        document.getElementById(tab.dataset.panel).classList.remove("hidden");
+    });
+});
+
+// Edit profile from mypage
+editProfileBtn.addEventListener("click", openProfileModal);
+
+// Logout from settings
+settingsLogoutBtn.addEventListener("click", () => {
+    logoutBtn.click();
+    document.getElementById("tab-chat").click();
+});
+
+function updateMyPageProfile() {
+    const grid = document.getElementById("profile-info-grid");
+    const techDisplay = document.getElementById("profile-tech-display");
+
+    if (!userProfile) {
+        grid.innerHTML = '<p class="info-empty">프로필을 설정해주세요.</p>';
+        techDisplay.innerHTML = '<p class="info-empty">기술 스택을 설정해주세요.</p>';
+        return;
+    }
+
+    const careerLabels = { new: "신입", junior: "주니어 (1~3년)", mid: "미드레벨 (4~7년)", senior: "시니어 (8년+)" };
+    const jobLabels = { backend: "백엔드", frontend: "프론트엔드", fullstack: "풀스택", "ai-ml": "AI/ML Engineer", data: "데이터 엔지니어", devops: "DevOps/SRE", other: "기타" };
+    const eduLabels = { "high-school": "고등학교", college: "전문대", bachelor: "대학교", master: "석사", phd: "박사" };
+    const salaryLabels = { "3000-4000": "3,000~4,000만원", "4000-5000": "4,000~5,000만원", "5000-6000": "5,000~6,000만원", "6000-8000": "6,000~8,000만원", "8000+": "8,000만원 이상" };
+    const locLabels = { seoul: "서울", pangyo: "판교/분당", incheon: "인천", busan: "부산", remote: "원격 근무", any: "무관" };
+
+    const fields = [
+        ["이름", userProfile.fullName],
+        ["나이", userProfile.age ? `${userProfile.age}세` : null],
+        ["경력", careerLabels[userProfile.careerType]],
+        ["희망 직군", jobLabels[userProfile.jobCategory]],
+        ["학력", eduLabels[userProfile.education]],
+        ["전공", userProfile.major],
+        ["희망 연봉", salaryLabels[userProfile.salaryRange]],
+        ["희망 지역", locLabels[userProfile.locationPref]],
+    ];
+
+    grid.innerHTML = fields
+        .filter(([, v]) => v)
+        .map(([label, value]) => `<span class="info-label">${label}</span><span class="info-value">${value}</span>`)
+        .join("");
+
+    if (!grid.innerHTML) {
+        grid.innerHTML = '<p class="info-empty">프로필을 설정해주세요.</p>';
+    }
+
+    // Tech stack
+    if (userProfile.techStack) {
+        const techs = userProfile.techStack.split(", ").filter(Boolean);
+        techDisplay.innerHTML = techs.map((t) => `<span class="profile-tech-tag">${t}</span>`).join("");
+    } else {
+        techDisplay.innerHTML = '<p class="info-empty">기술 스택을 설정해주세요.</p>';
+    }
+}
+
+// Show header tabs when logged in
+function updateHeaderTabs() {
+    headerActions.style.display = currentUser ? "flex" : "none";
 }
 
 // === Start ===

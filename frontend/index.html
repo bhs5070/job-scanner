@@ -102,9 +102,14 @@
                     <h2>AI 채용 도우미</h2>
                     <span class="status-badge" id="status-badge">Ready</span>
                 </div>
-                <button class="profile-btn" id="profile-btn">프로필 설정</button>
+                <div class="header-actions" id="header-actions" style="display:none">
+                    <button class="header-tab active" id="tab-chat" data-view="chat">채팅</button>
+                    <button class="header-tab" id="tab-mypage" data-view="mypage">마이페이지</button>
+                </div>
             </div>
 
+            <!-- Chat View -->
+            <div class="view" id="view-chat">
             <div class="messages" id="messages">
                 <div class="welcome-message">
                     <div class="welcome-logo">
@@ -137,6 +142,83 @@
                     </button>
                 </div>
                 <p class="input-hint">수집된 채용 공고 데이터를 기반으로 답변합니다</p>
+            </div>
+            </div>
+
+            <!-- My Page View -->
+            <div class="view hidden" id="view-mypage">
+                <div class="mypage">
+                    <div class="mypage-tabs">
+                        <button class="mypage-tab active" data-panel="panel-profile">내 정보</button>
+                        <button class="mypage-tab" data-panel="panel-history">매칭 기록</button>
+                        <button class="mypage-tab" data-panel="panel-saved">관심 공고</button>
+                        <button class="mypage-tab" data-panel="panel-settings">설정</button>
+                    </div>
+
+                    <!-- 내 정보 -->
+                    <div class="mypage-panel" id="panel-profile">
+                        <div class="panel-card">
+                            <h3>기본 정보</h3>
+                            <div class="info-grid" id="profile-info-grid">
+                                <p class="info-empty">로그인 후 프로필을 설정하면 여기에 표시됩니다.</p>
+                            </div>
+                            <button class="btn btn-secondary" id="edit-profile-btn" style="margin-top:12px">프로필 수정</button>
+                        </div>
+                        <div class="panel-card">
+                            <h3>보유 기술 스택</h3>
+                            <div class="profile-tech-tags" id="profile-tech-display">
+                                <p class="info-empty">기술 스택을 설정해주세요.</p>
+                            </div>
+                        </div>
+                        <div class="panel-card">
+                            <h3>업로드된 파일</h3>
+                            <div id="profile-files-display">
+                                <p class="info-empty">이력서 또는 포트폴리오를 업로드해주세요.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 매칭 기록 -->
+                    <div class="mypage-panel hidden" id="panel-history">
+                        <div class="panel-card">
+                            <div class="empty-state">
+                                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="var(--gray-300)" stroke-width="1.5"><path d="M12 8v4l3 3"/><circle cx="12" cy="12" r="10"/></svg>
+                                <h3>매칭 기록이 없습니다</h3>
+                                <p>채팅에서 이력서 매칭을 요청하면 결과가 여기에 기록됩니다.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 관심 공고 -->
+                    <div class="mypage-panel hidden" id="panel-saved">
+                        <div class="panel-card">
+                            <div class="empty-state">
+                                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="var(--gray-300)" stroke-width="1.5"><path d="M19 21l-7-5-7 5V5a2 2 0 012-2h10a2 2 0 012 2z"/></svg>
+                                <h3>저장된 공고가 없습니다</h3>
+                                <p>관심 있는 공고를 저장하면 여기에서 모아볼 수 있습니다.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 설정 -->
+                    <div class="mypage-panel hidden" id="panel-settings">
+                        <div class="panel-card">
+                            <h3>알림 설정</h3>
+                            <label class="toggle-row">
+                                <span>새 공고 알림</span>
+                                <input type="checkbox" id="notify-new-jobs">
+                            </label>
+                            <label class="toggle-row">
+                                <span>매칭 결과 알림</span>
+                                <input type="checkbox" id="notify-match" checked>
+                            </label>
+                        </div>
+                        <div class="panel-card">
+                            <h3>계정</h3>
+                            <button class="btn btn-secondary" id="settings-logout-btn">로그아웃</button>
+                        </div>
+                    </div>
+                </div>
             </div>
         </main>
     </div>
