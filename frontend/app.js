@@ -435,34 +435,42 @@ document.querySelectorAll(".feature-btn").forEach((btn) => {
 });
 
 function getSmartPrompt(basePrompt) {
-    // If user has profile, customize the prompt
-    if (!userProfile) return basePrompt;
-
-    const jobLabel = {
+    const hasResume = !!localStorage.getItem("jobscanner_resume_text");
+    const hasPortfolio = !!localStorage.getItem("jobscanner_portfolio_text");
+    const techStack = userProfile?.techStack || "";
+    const jobLabel = userProfile ? ({
         backend: "백엔드", frontend: "프론트엔드", fullstack: "풀스택",
         "ai-ml": "AI/ML Engineer", data: "데이터 엔지니어", devops: "DevOps"
-    }[userProfile.jobCategory] || "";
-
-    const hasResume = !!localStorage.getItem("jobscanner_resume_text");
+    }[userProfile.jobCategory] || "") : "";
 
     if (basePrompt.includes("공고 찾아줘")) {
         return jobLabel ? `${jobLabel} 관련 공고 찾아줘` : basePrompt;
     }
+
     if (basePrompt.includes("매칭")) {
-        return hasResume
-            ? "내 이력서를 기반으로 맞는 공고 매칭해줘"
-            : userProfile.techStack
-            ? `내 기술 스택(${userProfile.techStack})으로 지원할 수 있는 공고 추천해줘`
-            : basePrompt;
+        if (hasResume) {
+            return "내가 업로드한 이력서 내용을 분석해서, 나에게 가장 적합한 공고를 매칭해줘. 적합도와 이유도 알려줘.";
+        }
+        if (techStack) {
+            return `내 기술 스택(${techStack})을 기반으로 지원할 수 있는 공고를 매칭해줘. 적합도와 이유도 알려줘.`;
+        }
+        return basePrompt;
     }
+
     if (basePrompt.includes("갭")) {
-        return userProfile.techStack
-            ? `내 현재 기술(${userProfile.techStack})로 ${jobLabel || "AI Engineer"} 포지션까지 뭐가 부족한지 분석해줘`
-            : basePrompt;
+        if (hasResume) {
+            return `내 이력서를 분석해서 ${jobLabel || "AI Engineer"} 포지션에 지원하려면 어떤 역량이 부족한지 분석해줘.`;
+        }
+        if (techStack) {
+            return `내 현재 기술(${techStack})로 ${jobLabel || "AI Engineer"} 포지션까지 뭐가 부족한지 분석해줘.`;
+        }
+        return basePrompt;
     }
+
     if (basePrompt.includes("트렌드")) {
         return jobLabel ? `${jobLabel} 채용에서 요즘 가장 많이 요구하는 기술이 뭐야?` : basePrompt;
     }
+
     return basePrompt;
 }
 
