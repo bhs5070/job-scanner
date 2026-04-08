@@ -449,20 +449,20 @@ function getSmartPrompt(basePrompt) {
 
     if (basePrompt.includes("매칭")) {
         if (hasResume) {
-            return "내가 업로드한 이력서 내용을 분석해서, 나에게 가장 적합한 공고를 매칭해줘. 적합도와 이유도 알려줘.";
+            return "업로드한 이력서와 가장 적합한 채용 공고를 찾아서 매칭해줘.";
         }
         if (techStack) {
-            return `내 기술 스택(${techStack})을 기반으로 지원할 수 있는 공고를 매칭해줘. 적합도와 이유도 알려줘.`;
+            return `내 기술 스택(${techStack})과 가장 잘 맞는 채용 공고를 찾아줘.`;
         }
         return basePrompt;
     }
 
     if (basePrompt.includes("갭")) {
         if (hasResume) {
-            return `내 이력서를 분석해서 ${jobLabel || "AI Engineer"} 포지션에 지원하려면 어떤 역량이 부족한지 분석해줘.`;
+            return `업로드한 이력서를 기반으로 ${jobLabel || "AI Engineer"} 포지션까지 부족한 역량을 분석해줘.`;
         }
         if (techStack) {
-            return `내 현재 기술(${techStack})로 ${jobLabel || "AI Engineer"} 포지션까지 뭐가 부족한지 분석해줘.`;
+            return `내 기술(${techStack})로 ${jobLabel || "AI Engineer"} 포지션까지 부족한 역량을 분석해줘.`;
         }
         return basePrompt;
     }
