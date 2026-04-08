@@ -21,19 +21,23 @@ router = APIRouter(prefix="/api/auth", tags=["auth"])
 def _sign_token(data: dict) -> str:
     """Create a simple signed token (HMAC-SHA256)."""
     settings = get_settings()
-    secret = settings.OPENAI_API_KEY[:16]  # Use part of existing secret as signing key
+    secret = settings.AUTH_SECRET_KEY
+    if not secret:
+        raise ValueError("AUTH_SECRET_KEY not configured")
     payload = json.dumps(data, sort_keys=True)
-    sig = hmac.new(secret.encode(), payload.encode(), hashlib.sha256).hexdigest()[:16]
+    sig = hmac.new(secret.encode(), payload.encode(), hashlib.sha256).hexdigest()
     return f"{payload}|{sig}"
 
 
 def _verify_token(token: str) -> dict | None:
     """Verify and decode a signed token."""
     settings = get_settings()
-    secret = settings.OPENAI_API_KEY[:16]
+    secret = settings.AUTH_SECRET_KEY
+    if not secret:
+        return None
     try:
         payload, sig = token.rsplit("|", 1)
-        expected = hmac.new(secret.encode(), payload.encode(), hashlib.sha256).hexdigest()[:16]
+        expected = hmac.new(secret.encode(), payload.encode(), hashlib.sha256).hexdigest()
         if not hmac.compare_digest(sig, expected):
             return None
         data = json.loads(payload)
@@ -111,7 +115,7 @@ async def google_callback(code: str) -> RedirectResponse:
     response = RedirectResponse(url="/")
     response.set_cookie(
         "auth_token", auth_token,
-        httponly=False,  # Frontend needs to read it
+        httponly=True,
         samesite="lax",
         max_age=86400,
     )

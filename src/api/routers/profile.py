@@ -4,7 +4,9 @@ import logging
 import uuid
 from pathlib import Path
 
-from fastapi import APIRouter, File, Form, HTTPException, UploadFile
+from fastapi import APIRouter, Cookie, Depends, File, Form, HTTPException, UploadFile
+
+from src.api.routers.auth import _verify_token
 
 logger = logging.getLogger(__name__)
 
@@ -17,10 +19,19 @@ MAX_FILE_SIZE = 10 * 1024 * 1024  # 10MB
 ALLOWED_EXTENSIONS = {".pdf", ".docx"}
 
 
+def _require_auth(auth_token: str = Cookie(default="")) -> dict:
+    """Dependency: require authenticated user."""
+    data = _verify_token(auth_token)
+    if not data:
+        raise HTTPException(status_code=401, detail="Login required")
+    return data
+
+
 @router.post("/upload")
 async def upload_file(
     file: UploadFile = File(...),
     type: str = Form(...),
+    user: dict = Depends(_require_auth),
 ) -> dict:
     """Upload a resume or portfolio file."""
     if type not in ("resume", "portfolio"):

@@ -21,15 +21,31 @@ let currentUser = null;
 let userProfile = null;
 
 // === Init ===
-function init() {
-    const saved = localStorage.getItem("jobscanner_user");
-    if (saved) {
-        currentUser = JSON.parse(saved);
-        showLoggedInState();
-    }
+async function init() {
     const savedProfile = localStorage.getItem("jobscanner_profile");
     if (savedProfile) {
         userProfile = JSON.parse(savedProfile);
+    }
+
+    // Server is the single source of truth for auth
+    try {
+        const res = await fetch("/api/auth/me");
+        const data = await res.json();
+        if (data.authenticated) {
+            currentUser = { name: data.name, email: data.email, picture: data.picture };
+            localStorage.setItem("jobscanner_user", JSON.stringify(currentUser));
+            showLoggedInState();
+            if (!savedProfile) openProfileModal();
+        } else {
+            localStorage.removeItem("jobscanner_user");
+        }
+    } catch {
+        // Network error: use localStorage as fallback
+        const saved = localStorage.getItem("jobscanner_user");
+        if (saved) {
+            currentUser = JSON.parse(saved);
+            showLoggedInState();
+        }
     }
 }
 
@@ -512,25 +528,5 @@ async function sendMessage() {
     }
 }
 
-// Handle OAuth callback — check server cookie instead of URL params
-async function handleAuthCallback() {
-    try {
-        const res = await fetch("/api/auth/me");
-        const data = await res.json();
-        if (data.authenticated) {
-            currentUser = { name: data.name, email: data.email, picture: data.picture };
-            localStorage.setItem("jobscanner_user", JSON.stringify(currentUser));
-            showLoggedInState();
-
-            if (!localStorage.getItem("jobscanner_profile")) {
-                openProfileModal();
-            }
-        }
-    } catch {
-        // Not authenticated, no action needed
-    }
-}
-
 // === Start ===
 init();
-handleAuthCallback();

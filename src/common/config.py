@@ -34,6 +34,9 @@ class Settings(BaseSettings):
     GOOGLE_CLIENT_SECRET: str = ""
     GOOGLE_REDIRECT_URI: str = "http://localhost:8000/api/auth/google/callback"
 
+    # Auth
+    AUTH_SECRET_KEY: str = "change-me-in-production-use-secrets-token-hex-32"
+
     # General
     LOG_LEVEL: str = "INFO"
 
