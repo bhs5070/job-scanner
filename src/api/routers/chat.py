@@ -27,6 +27,7 @@ class ChatResponse(BaseModel):
     confidence: float | None
     response: str
     search_results: list[dict] | None = None
+    latency_ms: int | None = None
 
 
 @router.post("", response_model=ChatResponse)
@@ -49,8 +50,13 @@ async def chat(request: ChatRequest, auth_token: str = Cookie(default="")) -> Ch
     invoke_state["error"] = None
 
     try:
+        import time as _time
+        _start = _time.time()
+
         # graph.invoke is synchronous — run in thread pool to avoid blocking the event loop
         result = await asyncio.to_thread(graph.invoke, invoke_state)
+
+        _latency_ms = int((_time.time() - _start) * 1000)
 
         # Persist updated messages for multi-turn
         state["messages"] = result.get("messages", state.get("messages", []))
@@ -71,6 +77,7 @@ async def chat(request: ChatRequest, auth_token: str = Cookie(default="")) -> Ch
             confidence=result.get("intent_confidence"),
             response=response_text,
             search_results=search_results,
+            latency_ms=_latency_ms,
         )
 
     except Exception as e:

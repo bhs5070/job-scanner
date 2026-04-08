@@ -175,9 +175,19 @@ class EvalResult(Base):
     query: Mapped[str] = mapped_column(Text, nullable=False)
     response: Mapped[str] = mapped_column(Text, nullable=False)
     context: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # LLM Judge metrics (0.0 ~ 1.0)
     relevance: Mapped[float | None] = mapped_column(nullable=True)
     groundedness: Mapped[float | None] = mapped_column(nullable=True)
     helpfulness: Mapped[float | None] = mapped_column(nullable=True)
+    faithfulness: Mapped[float | None] = mapped_column(nullable=True)
+    answer_completeness: Mapped[float | None] = mapped_column(nullable=True)
+    retrieval_precision: Mapped[float | None] = mapped_column(nullable=True)
+    retrieval_mrr: Mapped[float | None] = mapped_column(nullable=True)
+    context_relevance: Mapped[float | None] = mapped_column(nullable=True)
+    # Code-measured metrics
+    routing_accuracy: Mapped[float | None] = mapped_column(nullable=True)
+    latency_ms: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    # Aggregate
     avg_score: Mapped[float | None] = mapped_column(nullable=True)
     judge_reasoning: Mapped[str | None] = mapped_column(Text, nullable=True)
     evaluated_at: Mapped[datetime] = mapped_column(

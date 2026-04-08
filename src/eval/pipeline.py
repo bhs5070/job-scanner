@@ -6,7 +6,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from src.db.models import EvalResult, MatchHistory
-from src.eval.metrics.judge import evaluate_response
+from src.eval.metrics.judge import LLM_JUDGE_METRICS, evaluate_response, evaluate_routing
 
 logger = logging.getLogger(__name__)
 
@@ -14,9 +14,12 @@ logger = logging.getLogger(__name__)
 def run_batch_eval(db: Session, limit: int = 50) -> dict:
     """Evaluate match_history records that haven't been evaluated yet.
 
-    Returns summary of evaluation results.
+    Scores 10 metrics per record:
+    - 8 LLM Judge: relevance, groundedness, helpfulness, faithfulness,
+      answer_completeness, retrieval_precision, retrieval_mrr, context_relevance
+    - 1 Routing accuracy (GPT-4o re-classification)
+    - 1 Latency (from match_history if available)
     """
-    # Find unevaluated records
     evaluated_ids = select(EvalResult.match_history_id).where(
         EvalResult.match_history_id.is_not(None)
     )
@@ -30,26 +33,20 @@ def run_batch_eval(db: Session, limit: int = 50) -> dict:
 
     if not records:
         logger.info("No unevaluated records found.")
-        return {"evaluated": 0, "skipped": 0}
+        return {"evaluated": 0, "skipped": 0, "averages": {}}
 
-    logger.info(f"Evaluating {len(records)} records...")
+    logger.info(f"Evaluating {len(records)} records with 10 metrics...")
 
     evaluated = 0
     skipped = 0
-    total_scores = {"relevance": 0, "groundedness": 0, "helpfulness": 0}
+    totals = {m: 0.0 for m in LLM_JUDGE_METRICS}
+    totals["routing_accuracy"] = 0.0
 
     for record in records:
         # Build context from results JSON
-        context = ""
-        if record.results:
-            context_parts = []
-            results_list = record.results if isinstance(record.results, list) else []
-            for r in results_list[:3]:
-                meta = r.get("metadata", {})
-                doc = r.get("document", "")[:200]
-                context_parts.append(f"{meta.get('title', '')} - {meta.get('company', '')}: {doc}")
-            context = "\n".join(context_parts)
+        context = _build_context(record.results)
 
+        # 8 LLM Judge metrics
         scores = evaluate_response(
             intent=record.intent,
             query=record.query,
@@ -57,9 +54,12 @@ def run_batch_eval(db: Session, limit: int = 50) -> dict:
             context=context,
         )
 
-        if scores["relevance"] is None:
+        if scores.get("relevance") is None:
             skipped += 1
             continue
+
+        # Routing accuracy
+        routing_score = evaluate_routing(record.intent, record.query)
 
         # Save to DB
         eval_record = EvalResult(
@@ -71,6 +71,12 @@ def run_batch_eval(db: Session, limit: int = 50) -> dict:
             relevance=scores["relevance"],
             groundedness=scores["groundedness"],
             helpfulness=scores["helpfulness"],
+            faithfulness=scores["faithfulness"],
+            answer_completeness=scores["answer_completeness"],
+            retrieval_precision=scores["retrieval_precision"],
+            retrieval_mrr=scores["retrieval_mrr"],
+            context_relevance=scores["context_relevance"],
+            routing_accuracy=routing_score,
             avg_score=scores["avg_score"],
             judge_reasoning=scores["reasoning"],
         )
@@ -78,26 +84,36 @@ def run_batch_eval(db: Session, limit: int = 50) -> dict:
         db.commit()
 
         evaluated += 1
-        for key in total_scores:
-            total_scores[key] += scores[key]
+        for m in LLM_JUDGE_METRICS:
+            if scores.get(m) is not None:
+                totals[m] += scores[m]
+        totals["routing_accuracy"] += routing_score
 
         logger.info(
-            f"Evaluated [{record.intent}] avg={scores['avg_score']:.2f} "
-            f"(rel={scores['relevance']:.1f} grnd={scores['groundedness']:.1f} help={scores['helpfulness']:.1f})"
+            f"[{record.intent}] avg={scores['avg_score']:.2f} routing={routing_score:.0f}"
         )
 
-    # Calculate averages
+    # Averages
     avg = {}
     if evaluated > 0:
-        avg = {k: round(v / evaluated, 3) for k, v in total_scores.items()}
+        avg = {k: round(v / evaluated, 3) for k, v in totals.items()}
 
-    summary = {
-        "evaluated": evaluated,
-        "skipped": skipped,
-        "averages": avg,
-    }
+    summary = {"evaluated": evaluated, "skipped": skipped, "averages": avg}
     logger.info(f"Batch eval complete: {summary}")
     return summary
+
+
+def _build_context(results) -> str:
+    """Build context string from match_history results JSON."""
+    if not results:
+        return ""
+    results_list = results if isinstance(results, list) else []
+    parts = []
+    for r in results_list[:5]:
+        meta = r.get("metadata", {})
+        doc = r.get("document", "")[:300]
+        parts.append(f"{meta.get('title', '')} - {meta.get('company', '')}: {doc}")
+    return "\n".join(parts)
 
 
 def log_to_mlflow(summary: dict) -> None:
@@ -111,7 +127,6 @@ def log_to_mlflow(summary: dict) -> None:
             mlflow.log_metric("skipped_count", summary["skipped"])
             for key, value in summary.get("averages", {}).items():
                 mlflow.log_metric(f"avg_{key}", value)
-
         logger.info("Logged eval results to MLflow.")
     except ImportError:
         logger.warning("MLflow not installed, skipping.")
