@@ -69,6 +69,7 @@ async def upload_file(
         "status": "ok",
         "filename": safe_name,
         "size": len(content),
+        "extracted_text": extracted_text,
         "extracted_length": len(extracted_text),
     }
 

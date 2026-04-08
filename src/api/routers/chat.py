@@ -17,6 +17,7 @@ router = APIRouter(prefix="/api/chat", tags=["chat"])
 class ChatRequest(BaseModel):
     message: str = Field(..., min_length=1, max_length=4000)
     session_id: str | None = Field(default=None, max_length=36)
+    profile_context: str | None = Field(default=None, max_length=8000)
 
 
 class ChatResponse(BaseModel):
@@ -35,7 +36,11 @@ async def chat(request: ChatRequest) -> ChatResponse:
 
     # Create a copy to avoid race conditions on concurrent requests
     invoke_state = copy.copy(state)
-    invoke_state["user_input"] = request.message
+    # Prepend profile context to user input if provided
+    user_input = request.message
+    if request.profile_context:
+        user_input = f"[사용자 프로필 정보]\n{request.profile_context}\n\n[질문]\n{request.message}"
+    invoke_state["user_input"] = user_input
     invoke_state["intent"] = None
     invoke_state["intent_confidence"] = None
     invoke_state["search_results"] = None

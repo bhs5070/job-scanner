@@ -309,25 +309,50 @@ async function uploadFile(file, type) {
     formData.append("file", file);
     formData.append("type", type);
     try {
-        await fetch("/api/profile/upload", { method: "POST", body: formData });
+        const res = await fetch("/api/profile/upload", { method: "POST", body: formData });
+        const data = await res.json();
+        // Store extracted text for agent context
+        if (data.extracted_text) {
+            localStorage.setItem(`jobscanner_${type}_text`, data.extracted_text);
+        }
+        return data;
     } catch (err) {
         console.warn("File upload failed:", err);
+        return null;
     }
 }
 
-function buildProfileSummary() {
-    if (!userProfile) return null;
+function buildProfileContext() {
     const parts = [];
     const careerLabels = { new: "신입", junior: "주니어(1~3년)", mid: "미드레벨(4~7년)", senior: "시니어(8년+)" };
     const jobLabels = { backend: "백엔드", frontend: "프론트엔드", fullstack: "풀스택", "ai-ml": "AI/ML Engineer", data: "데이터 엔지니어", devops: "DevOps", other: "기타" };
 
-    if (userProfile.careerType) parts.push(`경력: ${careerLabels[userProfile.careerType] || userProfile.careerType}`);
-    if (userProfile.jobCategory) parts.push(`희망 직군: ${jobLabels[userProfile.jobCategory] || userProfile.jobCategory}`);
-    if (userProfile.techStack) parts.push(`보유 기술: ${userProfile.techStack}`);
-    if (userProfile.education) parts.push(`학력: ${userProfile.education}`);
+    if (userProfile) {
+        if (userProfile.fullName) parts.push(`이름: ${userProfile.fullName}`);
+        if (userProfile.age) parts.push(`나이: ${userProfile.age}세`);
+        if (userProfile.careerType) parts.push(`경력: ${careerLabels[userProfile.careerType] || userProfile.careerType}`);
+        if (userProfile.jobCategory) parts.push(`희망 직군: ${jobLabels[userProfile.jobCategory] || userProfile.jobCategory}`);
+        if (userProfile.techStack) parts.push(`보유 기술: ${userProfile.techStack}`);
+        if (userProfile.education) parts.push(`학력: ${userProfile.education}`);
+        if (userProfile.salaryRange) parts.push(`희망 연봉: ${userProfile.salaryRange}`);
+        if (userProfile.locationPref) parts.push(`희망 지역: ${userProfile.locationPref}`);
+    }
 
-    if (!parts.length) return null;
-    return `내 프로필 정보를 기반으로 맞는 공고 추천해줘. ${parts.join(", ")}`;
+    // Include extracted resume text if available
+    const resumeText = localStorage.getItem("jobscanner_resume_text");
+    if (resumeText) {
+        // Truncate to avoid exceeding context limits
+        const truncated = resumeText.substring(0, 3000);
+        parts.push(`\n[이력서 내용]\n${truncated}`);
+    }
+
+    const portfolioText = localStorage.getItem("jobscanner_portfolio_text");
+    if (portfolioText) {
+        const truncated = portfolioText.substring(0, 2000);
+        parts.push(`\n[포트폴리오 내용]\n${truncated}`);
+    }
+
+    return parts.length > 0 ? parts.join("\n") : null;
 }
 
 // === Chat ===
@@ -399,20 +424,52 @@ function closeSidebar() {
     sidebarToggle.setAttribute("aria-expanded", "false");
 }
 
-// Feature buttons + quick chips
+// Feature buttons + quick chips — use profile-aware prompts
 document.querySelectorAll(".feature-btn").forEach((btn) => {
     btn.addEventListener("click", () => {
-        inputEl.value = btn.dataset.prompt;
+        inputEl.value = getSmartPrompt(btn.dataset.prompt);
         inputEl.dispatchEvent(new Event("input"));
         sendMessage();
         closeSidebar();
     });
 });
 
+function getSmartPrompt(basePrompt) {
+    // If user has profile, customize the prompt
+    if (!userProfile) return basePrompt;
+
+    const jobLabel = {
+        backend: "백엔드", frontend: "프론트엔드", fullstack: "풀스택",
+        "ai-ml": "AI/ML Engineer", data: "데이터 엔지니어", devops: "DevOps"
+    }[userProfile.jobCategory] || "";
+
+    const hasResume = !!localStorage.getItem("jobscanner_resume_text");
+
+    if (basePrompt.includes("공고 찾아줘")) {
+        return jobLabel ? `${jobLabel} 관련 공고 찾아줘` : basePrompt;
+    }
+    if (basePrompt.includes("매칭")) {
+        return hasResume
+            ? "내 이력서를 기반으로 맞는 공고 매칭해줘"
+            : userProfile.techStack
+            ? `내 기술 스택(${userProfile.techStack})으로 지원할 수 있는 공고 추천해줘`
+            : basePrompt;
+    }
+    if (basePrompt.includes("갭")) {
+        return userProfile.techStack
+            ? `내 현재 기술(${userProfile.techStack})로 ${jobLabel || "AI Engineer"} 포지션까지 뭐가 부족한지 분석해줘`
+            : basePrompt;
+    }
+    if (basePrompt.includes("트렌드")) {
+        return jobLabel ? `${jobLabel} 채용에서 요즘 가장 많이 요구하는 기술이 뭐야?` : basePrompt;
+    }
+    return basePrompt;
+}
+
 function bindQuickChips() {
     document.querySelectorAll(".quick-chip").forEach((chip) => {
         chip.addEventListener("click", () => {
-            inputEl.value = chip.dataset.prompt;
+            inputEl.value = getSmartPrompt(chip.dataset.prompt);
             inputEl.dispatchEvent(new Event("input"));
             sendMessage();
         });
@@ -507,7 +564,11 @@ async function sendMessage() {
         const res = await fetch("/api/chat", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ message, session_id: sessionId }),
+            body: JSON.stringify({
+                message,
+                session_id: sessionId,
+                profile_context: buildProfileContext(),
+            }),
         });
 
         removeLoadingMessage();
