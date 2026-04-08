@@ -160,3 +160,30 @@ class Conversation(Base):
     __table_args__ = (
         Index("ix_conversations_user", "user_email", "updated_at"),
     )
+
+
+class EvalResult(Base):
+    __tablename__ = "eval_results"
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    match_history_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("match_history.id"), nullable=True
+    )
+    intent: Mapped[str] = mapped_column(String(50), nullable=False)
+    query: Mapped[str] = mapped_column(Text, nullable=False)
+    response: Mapped[str] = mapped_column(Text, nullable=False)
+    context: Mapped[str | None] = mapped_column(Text, nullable=True)
+    relevance: Mapped[float | None] = mapped_column(nullable=True)
+    groundedness: Mapped[float | None] = mapped_column(nullable=True)
+    helpfulness: Mapped[float | None] = mapped_column(nullable=True)
+    avg_score: Mapped[float | None] = mapped_column(nullable=True)
+    judge_reasoning: Mapped[str | None] = mapped_column(Text, nullable=True)
+    evaluated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
+
+    __table_args__ = (
+        Index("ix_eval_results_evaluated", "evaluated_at"),
+    )
