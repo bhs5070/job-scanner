@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Job Scanner - AI 채용 분석 에이전트</title>
+    <link rel="stylesheet" href="/styles.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/dompurify/dist/purify.min.js"></script>
+</head>
+<body>
+    <div class="app">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <div class="logo">
+                    <span class="logo-icon">&#x1F50D;</span>
+                    <h1>Job Scanner</h1>
+                </div>
+                <p class="subtitle">AI 채용 분석 에이전트</p>
+            </div>
+
+            <div class="sidebar-features">
+                <h3>무엇을 도와드릴까요?</h3>
+                <button class="feature-btn" data-prompt="AI Engineer 공고 찾아줘">
+                    <span class="feature-icon">&#x1F4CB;</span>
+                    <div>
+                        <strong>공고 검색</strong>
+                        <p>원하는 포지션의 채용 공고를 찾아보세요</p>
+                    </div>
+                </button>
+                <button class="feature-btn" data-prompt="내 스킬셋: Python, FastAPI, LangChain 2년 경력. 어디 지원할 수 있어?">
+                    <span class="feature-icon">&#x1F4BC;</span>
+                    <div>
+                        <strong>이력서 매칭</strong>
+                        <p>내 이력서에 맞는 공고를 추천받으세요</p>
+                    </div>
+                </button>
+                <button class="feature-btn" data-prompt="Python, PyTorch 할 줄 아는데 AI Engineer 가려면 뭘 더 배워야 해?">
+                    <span class="feature-icon">&#x1F4DA;</span>
+                    <div>
+                        <strong>역량 갭 분석</strong>
+                        <p>목표 포지션까지 부족한 점을 분석해드려요</p>
+                    </div>
+                </button>
+                <button class="feature-btn" data-prompt="요즘 AI Engineer 채용에서 가장 많이 요구하는 기술이 뭐야?">
+                    <span class="feature-icon">&#x1F4C8;</span>
+                    <div>
+                        <strong>트렌드 분석</strong>
+                        <p>채용 시장의 기술 트렌드를 확인하세요</p>
+                    </div>
+                </button>
+            </div>
+
+            <div class="sidebar-footer">
+                <button id="new-chat-btn" class="new-chat-btn">+ 새 대화</button>
+            </div>
+        </aside>
+
+        <!-- Main Chat Area -->
+        <main class="chat-area">
+            <div class="chat-header">
+                <button id="sidebar-toggle" class="sidebar-toggle">&#9776;</button>
+                <div class="chat-header-info">
+                    <h2>AI 채용 도우미</h2>
+                    <span class="status-badge" id="status-badge">Ready</span>
+                </div>
+            </div>
+
+            <div class="messages" id="messages">
+                <div class="welcome-message">
+                    <div class="welcome-icon">&#x1F44B;</div>
+                    <h2>안녕하세요! Job Scanner입니다</h2>
+                    <p>AI/개발 직군 취업을 도와드리는 AI 에이전트예요.<br>
+                    왼쪽 메뉴에서 기능을 선택하거나, 자유롭게 질문해 주세요!</p>
+                </div>
+            </div>
+
+            <div class="input-area">
+                <div class="input-wrapper">
+                    <textarea
+                        id="message-input"
+                        placeholder="메시지를 입력하세요... (Shift+Enter로 줄바꿈)"
+                        rows="1"
+                    ></textarea>
+                    <button id="send-btn" class="send-btn" disabled>
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M22 2L11 13"></path>
+                            <path d="M22 2L15 22L11 13L2 9L22 2Z"></path>
+                        </svg>
+                    </button>
+                </div>
+                <p class="input-hint">Job Scanner는 수집된 채용 공고 데이터를 기반으로 답변합니다</p>
+            </div>
+        </main>
+    </div>
+
+    <script src="/app.js"></script>
+</body>
+</html>
