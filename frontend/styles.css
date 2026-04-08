@@ -1107,6 +1107,39 @@ textarea::placeholder {
     accent-color: var(--accent);
 }
 
+/* === Drag and Drop === */
+.dropzone.drag-over {
+    border-color: var(--accent);
+    background: var(--accent-light);
+}
+
+.dropzone.drag-over svg {
+    stroke: var(--accent);
+}
+
+.file-hint {
+    font-size: 11px;
+    color: var(--text-muted);
+    margin-top: 4px;
+    display: block;
+}
+
+/* Save area */
+.panel-save-area {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.save-status {
+    font-size: 13px;
+    color: var(--text-secondary);
+}
+
+.save-status.success {
+    color: #059669;
+}
+
 /* === File Upload Status === */
 .file-status {
     display: flex;

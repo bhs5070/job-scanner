@@ -173,9 +173,10 @@
                         <div class="panel-card">
                             <h3>이력서</h3>
                             <div id="mypage-resume-status"></div>
-                            <div class="file-upload" id="mypage-resume-upload">
+                            <div class="file-upload dropzone" id="mypage-resume-upload" data-type="resume">
                                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--gray-400)" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-                                <p>PDF, DOCX 파일을 클릭하여 업로드</p>
+                                <p>파일을 드래그하거나 클릭하여 업로드</p>
+                                <span class="file-hint">PDF, DOCX (최대 10MB)</span>
                                 <div class="file-name" id="mypage-resume-name"></div>
                                 <input type="file" id="mypage-resume-file" accept=".pdf,.docx" hidden>
                             </div>
@@ -183,12 +184,17 @@
                         <div class="panel-card">
                             <h3>포트폴리오</h3>
                             <div id="mypage-portfolio-status"></div>
-                            <div class="file-upload" id="mypage-portfolio-upload">
+                            <div class="file-upload dropzone" id="mypage-portfolio-upload" data-type="portfolio">
                                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--gray-400)" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-                                <p>PDF, DOCX 파일을 클릭하여 업로드</p>
+                                <p>파일을 드래그하거나 클릭하여 업로드</p>
+                                <span class="file-hint">PDF, DOCX (최대 10MB)</span>
                                 <div class="file-name" id="mypage-portfolio-name"></div>
                                 <input type="file" id="mypage-portfolio-file" accept=".pdf,.docx" hidden>
                             </div>
+                        </div>
+                        <div class="panel-card panel-save-area">
+                            <button class="btn btn-primary" id="mypage-save-btn" disabled>변경사항 저장</button>
+                            <span class="save-status" id="save-status"></span>
                         </div>
                     </div>
 

@@ -590,41 +590,95 @@ async function sendMessage() {
     }
 }
 
-// === Mypage File Uploads ===
-const mypageResumeUpload = document.getElementById("mypage-resume-upload");
-const mypageResumeFile = document.getElementById("mypage-resume-file");
-const mypagePortfolioUpload = document.getElementById("mypage-portfolio-upload");
-const mypagePortfolioFile = document.getElementById("mypage-portfolio-file");
+// === Mypage File Uploads (Click + Drag & Drop) ===
+const pendingUploads = {}; // { resume: File, portfolio: File }
+const mypageSaveBtn = document.getElementById("mypage-save-btn");
+const saveStatus = document.getElementById("save-status");
 
-if (mypageResumeUpload) {
-    mypageResumeUpload.addEventListener("click", () => mypageResumeFile.click());
-    mypageResumeFile.addEventListener("change", async () => {
-        const file = mypageResumeFile.files[0];
-        if (!file) return;
-        document.getElementById("mypage-resume-name").textContent = "업로드 중...";
-        const result = await uploadFile(file, "resume");
-        if (result && result.status === "ok") {
-            showFileStatus("mypage-resume-status", file.name, result.extracted_length);
-            document.getElementById("mypage-resume-name").textContent = "";
-        } else {
-            document.getElementById("mypage-resume-name").textContent = "업로드 실패";
-        }
+function setupDropzone(type) {
+    const dropzone = document.getElementById(`mypage-${type}-upload`);
+    const fileInput = document.getElementById(`mypage-${type}-file`);
+    const nameEl = document.getElementById(`mypage-${type}-name`);
+    if (!dropzone || !fileInput) return;
+
+    // Click to browse
+    dropzone.addEventListener("click", () => fileInput.click());
+
+    // File selected via browser
+    fileInput.addEventListener("change", () => {
+        if (fileInput.files[0]) stageFile(type, fileInput.files[0]);
+    });
+
+    // Drag & drop
+    dropzone.addEventListener("dragover", (e) => {
+        e.preventDefault();
+        dropzone.classList.add("drag-over");
+    });
+
+    dropzone.addEventListener("dragleave", () => {
+        dropzone.classList.remove("drag-over");
+    });
+
+    dropzone.addEventListener("drop", (e) => {
+        e.preventDefault();
+        dropzone.classList.remove("drag-over");
+        const file = e.dataTransfer.files[0];
+        if (file) stageFile(type, file);
     });
 }
 
-if (mypagePortfolioUpload) {
-    mypagePortfolioUpload.addEventListener("click", () => mypagePortfolioFile.click());
-    mypagePortfolioFile.addEventListener("change", async () => {
-        const file = mypagePortfolioFile.files[0];
-        if (!file) return;
-        document.getElementById("mypage-portfolio-name").textContent = "업로드 중...";
-        const result = await uploadFile(file, "portfolio");
-        if (result && result.status === "ok") {
-            showFileStatus("mypage-portfolio-status", file.name, result.extracted_length);
-            document.getElementById("mypage-portfolio-name").textContent = "";
-        } else {
-            document.getElementById("mypage-portfolio-name").textContent = "업로드 실패";
+function stageFile(type, file) {
+    const ext = file.name.split(".").pop().toLowerCase();
+    if (!["pdf", "docx"].includes(ext)) {
+        alert("PDF 또는 DOCX 파일만 업로드 가능합니다.");
+        return;
+    }
+    if (file.size > 10 * 1024 * 1024) {
+        alert("파일 크기는 10MB 이하여야 합니다.");
+        return;
+    }
+
+    pendingUploads[type] = file;
+    const nameEl = document.getElementById(`mypage-${type}-name`);
+    if (nameEl) nameEl.textContent = `${file.name} (저장 대기 중)`;
+
+    mypageSaveBtn.disabled = false;
+    saveStatus.textContent = "";
+    saveStatus.className = "save-status";
+}
+
+setupDropzone("resume");
+setupDropzone("portfolio");
+
+// Save button
+if (mypageSaveBtn) {
+    mypageSaveBtn.addEventListener("click", async () => {
+        mypageSaveBtn.disabled = true;
+        saveStatus.textContent = "저장 중...";
+        saveStatus.className = "save-status";
+
+        let success = true;
+
+        for (const [type, file] of Object.entries(pendingUploads)) {
+            const nameEl = document.getElementById(`mypage-${type}-name`);
+            if (nameEl) nameEl.textContent = "업로드 중...";
+
+            const result = await uploadFile(file, type);
+            if (result && result.status === "ok") {
+                showFileStatus(`mypage-${type}-status`, file.name, result.extracted_length);
+                if (nameEl) nameEl.textContent = "";
+            } else {
+                if (nameEl) nameEl.textContent = "업로드 실패";
+                success = false;
+            }
         }
+
+        // Clear pending
+        for (const key of Object.keys(pendingUploads)) delete pendingUploads[key];
+
+        saveStatus.textContent = success ? "저장 완료" : "일부 파일 업로드 실패";
+        saveStatus.className = success ? "save-status success" : "save-status";
+        mypageSaveBtn.disabled = true;
     });
 }
 
