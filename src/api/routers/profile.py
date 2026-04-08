@@ -5,8 +5,13 @@ import uuid
 from pathlib import Path
 
 from fastapi import APIRouter, Cookie, Depends, File, Form, HTTPException, UploadFile
+from pydantic import BaseModel
+from sqlalchemy import select
+from sqlalchemy.orm import Session
 
 from src.api.routers.auth import _verify_token
+from src.db.models import UserProfile
+from src.db.session import SessionLocal
 
 logger = logging.getLogger(__name__)
 
@@ -20,65 +25,145 @@ ALLOWED_EXTENSIONS = {".pdf", ".docx"}
 
 
 def _require_auth(auth_token: str = Cookie(default="")) -> dict:
-    """Dependency: require authenticated user."""
     data = _verify_token(auth_token)
     if not data:
         raise HTTPException(status_code=401, detail="Login required")
     return data
 
 
+def _get_db():
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
+
+
+# === Profile CRUD ===
+
+class ProfileData(BaseModel):
+    full_name: str | None = None
+    age: int | None = None
+    career_type: str | None = None
+    job_category: str | None = None
+    tech_stack: str | None = None
+    education: str | None = None
+    major: str | None = None
+    salary_range: str | None = None
+    location_pref: str | None = None
+
+
+@router.get("/me")
+async def get_profile(
+    user: dict = Depends(_require_auth),
+    db: Session = Depends(_get_db),
+) -> dict:
+    """Get current user's profile from DB."""
+    profile = db.get(UserProfile, user["email"])
+    if not profile:
+        return {"exists": False}
+
+    return {
+        "exists": True,
+        "full_name": profile.full_name,
+        "age": profile.age,
+        "career_type": profile.career_type,
+        "job_category": profile.job_category,
+        "tech_stack": profile.tech_stack,
+        "education": profile.education,
+        "major": profile.major,
+        "salary_range": profile.salary_range,
+        "location_pref": profile.location_pref,
+        "resume_text": profile.resume_text[:100] + "..." if profile.resume_text and len(profile.resume_text) > 100 else profile.resume_text,
+        "has_resume": bool(profile.resume_text),
+        "has_portfolio": bool(profile.portfolio_text),
+    }
+
+
+@router.post("/me")
+async def save_profile(
+    data: ProfileData,
+    user: dict = Depends(_require_auth),
+    db: Session = Depends(_get_db),
+) -> dict:
+    """Save or update user profile in DB."""
+    profile = db.get(UserProfile, user["email"])
+    if not profile:
+        profile = UserProfile(id=user["email"])
+        db.add(profile)
+
+    profile.full_name = data.full_name
+    profile.age = data.age
+    profile.career_type = data.career_type
+    profile.job_category = data.job_category
+    profile.tech_stack = data.tech_stack
+    profile.education = data.education
+    profile.major = data.major
+    profile.salary_range = data.salary_range
+    profile.location_pref = data.location_pref
+
+    db.commit()
+    return {"status": "ok"}
+
+
+# === File Upload ===
+
 @router.post("/upload")
 async def upload_file(
     file: UploadFile = File(...),
     type: str = Form(...),
     user: dict = Depends(_require_auth),
+    db: Session = Depends(_get_db),
 ) -> dict:
-    """Upload a resume or portfolio file."""
+    """Upload resume/portfolio, extract text, save to DB."""
     if type not in ("resume", "portfolio"):
         raise HTTPException(status_code=400, detail="Invalid file type")
 
-    # Validate file extension
     filename = file.filename or ""
     ext = Path(filename).suffix.lower()
     if ext not in ALLOWED_EXTENSIONS:
         raise HTTPException(status_code=400, detail="Only PDF and DOCX files are allowed")
 
-    # Read and validate size
     content = await file.read()
     if len(content) > MAX_FILE_SIZE:
         raise HTTPException(status_code=400, detail="File too large (max 10MB)")
 
-    # Save with UUID filename to prevent path traversal
     safe_name = f"{type}_{uuid.uuid4().hex}{ext}"
     save_path = UPLOAD_DIR / safe_name
-
-    # Extra safety: verify path is inside UPLOAD_DIR
     if not save_path.resolve().is_relative_to(UPLOAD_DIR.resolve()):
         raise HTTPException(status_code=400, detail="Invalid filename")
 
     save_path.write_bytes(content)
 
-    # Extract text (basic)
     extracted_text = ""
     if ext == ".pdf":
         extracted_text = _extract_pdf_text(save_path)
 
-    logger.info(f"Uploaded {type}: {safe_name} ({len(content)} bytes)")
+    # Save extracted text to user profile in DB
+    profile = db.get(UserProfile, user["email"])
+    if not profile:
+        profile = UserProfile(id=user["email"])
+        db.add(profile)
+
+    if type == "resume":
+        profile.resume_text = extracted_text
+    else:
+        profile.portfolio_text = extracted_text
+
+    db.commit()
+    logger.info(f"Uploaded {type}: {safe_name} ({len(content)} bytes, {len(extracted_text)} chars extracted)")
 
     return {
         "status": "ok",
         "filename": safe_name,
-        "size": len(content),
         "extracted_text": extracted_text,
         "extracted_length": len(extracted_text),
     }
 
 
 def _extract_pdf_text(path: Path) -> str:
-    """Extract text from a PDF file."""
     try:
         import PyPDF2
-
         text_parts = []
         with open(path, "rb") as f:
             reader = PyPDF2.PdfReader(f)
@@ -88,7 +173,7 @@ def _extract_pdf_text(path: Path) -> str:
                     text_parts.append(text)
         return "\n".join(text_parts)
     except ImportError:
-        logger.warning("PyPDF2 not installed, skipping PDF extraction")
+        logger.warning("PyPDF2 not installed")
         return ""
     except Exception as e:
         logger.warning(f"PDF extraction failed: {e}")

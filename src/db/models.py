@@ -74,6 +74,29 @@ class CrawlLog(Base):
     )
 
 
+class UserProfile(Base):
+    __tablename__ = "user_profiles"
+
+    id: Mapped[str] = mapped_column(String(200), primary_key=True)  # email
+    full_name: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    age: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    career_type: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    job_category: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    tech_stack: Mapped[str | None] = mapped_column(Text, nullable=True)
+    education: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    major: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    salary_range: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    location_pref: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    resume_text: Mapped[str | None] = mapped_column(Text, nullable=True)
+    portfolio_text: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )
+
+
 class Bookmark(Base):
     __tablename__ = "bookmarks"
 

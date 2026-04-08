@@ -26,30 +26,43 @@ let userProfile = null;
 
 // === Init ===
 async function init() {
-    const savedProfile = localStorage.getItem("jobscanner_profile");
-    if (savedProfile) {
-        userProfile = JSON.parse(savedProfile);
-    }
-
     // Server is the single source of truth for auth
     try {
         const res = await fetch("/api/auth/me", { credentials: "same-origin" });
         const data = await res.json();
         if (data.authenticated) {
             currentUser = { name: data.name, email: data.email, picture: data.picture };
-            localStorage.setItem("jobscanner_user", JSON.stringify(currentUser));
             showLoggedInState();
-            if (!savedProfile && !localStorage.getItem("jobscanner_profile_completed")) openProfileModal();
-        } else {
-            localStorage.removeItem("jobscanner_user");
+
+            // Load profile from DB
+            const profileRes = await fetch("/api/profile/me", { credentials: "same-origin" });
+            const profileData = await profileRes.json();
+            if (profileData.exists) {
+                userProfile = {
+                    fullName: profileData.full_name,
+                    age: profileData.age,
+                    careerType: profileData.career_type,
+                    jobCategory: profileData.job_category,
+                    techStack: profileData.tech_stack,
+                    education: profileData.education,
+                    major: profileData.major,
+                    salaryRange: profileData.salary_range,
+                    locationPref: profileData.location_pref,
+                };
+                // Sync resume text to localStorage for chat context
+                if (profileData.has_resume) {
+                    // Mark that resume exists (full text fetched on demand)
+                    localStorage.setItem("jobscanner_resume_text", profileData.resume_text || "resume_uploaded");
+                }
+            } else {
+                // First login — show onboarding
+                openProfileModal();
+            }
         }
     } catch {
-        // Network error: use localStorage as fallback
-        const saved = localStorage.getItem("jobscanner_user");
-        if (saved) {
-            currentUser = JSON.parse(saved);
-            showLoggedInState();
-        }
+        // Offline fallback
+        const savedProfile = localStorage.getItem("jobscanner_profile");
+        if (savedProfile) userProfile = JSON.parse(savedProfile);
     }
 }
 
@@ -289,8 +302,26 @@ profileForm.addEventListener("submit", async (e) => {
         locationPref: document.getElementById("location-pref").value,
     };
 
+    // Save to localStorage (offline cache) + DB (persistent)
     localStorage.setItem("jobscanner_profile", JSON.stringify(userProfile));
-    localStorage.setItem("jobscanner_profile_completed", "true");
+
+    // Save to DB
+    fetch("/api/profile/me", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "same-origin",
+        body: JSON.stringify({
+            full_name: userProfile.fullName,
+            age: userProfile.age ? parseInt(userProfile.age) : null,
+            career_type: userProfile.careerType,
+            job_category: userProfile.jobCategory,
+            tech_stack: userProfile.techStack,
+            education: userProfile.education,
+            major: userProfile.major,
+            salary_range: userProfile.salaryRange,
+            location_pref: userProfile.locationPref,
+        }),
+    }).catch((err) => console.warn("Profile save failed:", err));
 
     // Upload resume if selected
     if (resumeFile.files[0]) {
