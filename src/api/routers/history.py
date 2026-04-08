@@ -1,30 +1,16 @@
 """Match history API router."""
 
-from fastapi import APIRouter, Cookie, Depends, HTTPException
+from src.api.deps import get_current_user_email, get_db
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from src.api.routers.auth import _verify_token
 from src.db.models import MatchHistory
-from src.db.session import SessionLocal
 
 router = APIRouter(prefix="/api/history", tags=["history"])
 
 
-def _get_user_email(auth_token: str = Cookie(default="")) -> str:
-    data = _verify_token(auth_token)
-    if not data:
-        raise HTTPException(status_code=401, detail="Login required")
-    return data["email"]
-
-
-def _get_db():
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
 
 
 class HistoryResponse(BaseModel):
@@ -37,8 +23,8 @@ class HistoryResponse(BaseModel):
 
 @router.get("")
 async def list_history(
-    email: str = Depends(_get_user_email),
-    db: Session = Depends(_get_db),
+    email: str = Depends(get_current_user_email),
+    db: Session = Depends(get_db),
 ) -> list[HistoryResponse]:
     stmt = (
         select(MatchHistory)

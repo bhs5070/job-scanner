@@ -4,7 +4,7 @@ import asyncio
 import copy
 import logging
 
-from fastapi import APIRouter, Cookie, HTTPException
+from fastapi import APIRouter, Cookie, HTTPException, Request
 from pydantic import BaseModel, Field
 
 from src.api.deps import delete_session, get_graph, get_or_create_session
@@ -30,7 +30,7 @@ class ChatResponse(BaseModel):
 
 
 @router.post("", response_model=ChatResponse)
-async def chat(request: ChatRequest) -> ChatResponse:
+async def chat(request: ChatRequest, auth_token: str = Cookie(default="")) -> ChatResponse:
     """Send a message to the agent and get a response."""
     session_id, state = get_or_create_session(request.session_id)
     graph = get_graph()
@@ -62,7 +62,7 @@ async def chat(request: ChatRequest) -> ChatResponse:
         # Auto-save match/gap results to history (background, non-blocking)
         if intent in ("resume_match", "skill_gap", "job_search"):
             asyncio.create_task(_save_history(
-                request, intent, response_text, search_results,
+                request, intent, response_text, search_results, auth_token,
             ))
 
         return ChatResponse(
@@ -87,12 +87,14 @@ async def _save_history(
         from src.db.models import MatchHistory
         from src.db.session import SessionLocal
 
-        # Try to get user email from cookie context
-        # For now, use a simple approach
+        data = _verify_token(auth_token)
+        if not data:
+            return  # Don't save for unauthenticated users
+
         db = SessionLocal()
         try:
             record = MatchHistory(
-                user_email="anonymous",  # Will be improved with proper auth context
+                user_email=data["email"],
                 query=request.message,
                 intent=intent,
                 results=results,

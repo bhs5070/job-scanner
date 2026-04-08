@@ -1,9 +1,15 @@
 """FastAPI dependencies."""
 
 import uuid
+from collections.abc import Generator
 from functools import lru_cache
 
+from fastapi import Cookie, HTTPException
+from sqlalchemy.orm import Session
+
 from src.agents import AgentState, compile_graph
+from src.api.routers.auth import _verify_token
+from src.db.session import SessionLocal
 
 # In-memory session store (single process, MVP)
 _sessions: dict[str, AgentState] = {}
@@ -38,3 +44,20 @@ def get_or_create_session(session_id: str | None = None) -> tuple[str, AgentStat
     }
     _sessions[new_id] = state
     return new_id, state
+
+
+def get_current_user_email(auth_token: str = Cookie(default="")) -> str:
+    """Dependency: get authenticated user's email or raise 401."""
+    data = _verify_token(auth_token)
+    if not data:
+        raise HTTPException(status_code=401, detail="Login required")
+    return data["email"]
+
+
+def get_db() -> Generator[Session, None, None]:
+    """Dependency: get a DB session."""
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()

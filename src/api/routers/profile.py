@@ -136,8 +136,11 @@ async def upload_file(
     save_path.write_bytes(content)
 
     extracted_text = ""
-    if ext == ".pdf":
-        extracted_text = _extract_pdf_text(save_path)
+    try:
+        if ext == ".pdf":
+            extracted_text = _extract_pdf_text(save_path)
+    finally:
+        save_path.unlink(missing_ok=True)  # Delete file after extraction
 
     # Save extracted text to user profile in DB
     profile = db.get(UserProfile, user["email"])

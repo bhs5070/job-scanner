@@ -1,36 +1,22 @@
 """Competitiveness dashboard API router."""
 
-from fastapi import APIRouter, Cookie, Depends, HTTPException
+from src.api.deps import get_current_user_email, get_db
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
 
-from src.api.routers.auth import _verify_token
 from src.db.models import Bookmark, JobPosting
-from src.db.session import SessionLocal
 
 router = APIRouter(prefix="/api/dashboard", tags=["dashboard"])
 
 
-def _get_user_email(auth_token: str = Cookie(default="")) -> str:
-    data = _verify_token(auth_token)
-    if not data:
-        raise HTTPException(status_code=401, detail="Login required")
-    return data["email"]
-
-
-def _get_db():
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
 
 
 @router.get("/competitiveness")
 async def get_competitiveness(
     skills: str = "",
-    email: str = Depends(_get_user_email),
-    db: Session = Depends(_get_db),
+    email: str = Depends(get_current_user_email),
+    db: Session = Depends(get_db),
 ) -> dict:
     """Analyze how competitive the user's skills are in the market."""
     total_active = db.scalar(
