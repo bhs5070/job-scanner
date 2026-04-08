@@ -1,10 +1,14 @@
 """FastAPI application entry point."""
 
+from pathlib import Path
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
 from src.api.routers.chat import router as chat_router
+
+FRONTEND_DIR = Path(__file__).parent.parent.parent / "frontend"
 
 app = FastAPI(
     title="Job Scanner",
@@ -26,4 +30,4 @@ app.add_middleware(
 app.include_router(chat_router)
 
 # Serve frontend static files
-app.mount("/", StaticFiles(directory="frontend", html=True), name="frontend")
+app.mount("/", StaticFiles(directory=FRONTEND_DIR, html=True), name="frontend")

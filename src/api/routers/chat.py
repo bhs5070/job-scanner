@@ -1,10 +1,11 @@
 """Chat API router."""
 
 import asyncio
+import copy
 import logging
 
 from fastapi import APIRouter, HTTPException
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from src.api.deps import delete_session, get_graph, get_or_create_session
 
@@ -14,8 +15,8 @@ router = APIRouter(prefix="/api/chat", tags=["chat"])
 
 
 class ChatRequest(BaseModel):
-    message: str
-    session_id: str | None = None
+    message: str = Field(..., min_length=1, max_length=4000)
+    session_id: str | None = Field(default=None, max_length=36)
 
 
 class ChatResponse(BaseModel):
@@ -29,23 +30,21 @@ class ChatResponse(BaseModel):
 @router.post("", response_model=ChatResponse)
 async def chat(request: ChatRequest) -> ChatResponse:
     """Send a message to the agent and get a response."""
-    if not request.message.strip():
-        raise HTTPException(status_code=400, detail="Message cannot be empty")
-
     session_id, state = get_or_create_session(request.session_id)
     graph = get_graph()
 
-    # Update state with new user input
-    state["user_input"] = request.message
-    state["intent"] = None
-    state["intent_confidence"] = None
-    state["search_results"] = None
-    state["final_response"] = None
-    state["error"] = None
+    # Create a copy to avoid race conditions on concurrent requests
+    invoke_state = copy.copy(state)
+    invoke_state["user_input"] = request.message
+    invoke_state["intent"] = None
+    invoke_state["intent_confidence"] = None
+    invoke_state["search_results"] = None
+    invoke_state["final_response"] = None
+    invoke_state["error"] = None
 
     try:
         # graph.invoke is synchronous — run in thread pool to avoid blocking the event loop
-        result = await asyncio.to_thread(graph.invoke, state)
+        result = await asyncio.to_thread(graph.invoke, invoke_state)
 
         # Persist updated messages for multi-turn
         state["messages"] = result.get("messages", state.get("messages", []))

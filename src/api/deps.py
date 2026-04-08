@@ -10,8 +10,9 @@ _sessions: dict[str, AgentState] = {}
 
 
 @lru_cache(maxsize=1)
-def get_graph():
+def get_graph() -> "CompiledStateGraph":
     """Get the compiled agent graph (singleton)."""
+    from langgraph.graph.state import CompiledStateGraph  # noqa: F811
     return compile_graph()
 
 
