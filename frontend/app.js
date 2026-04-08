@@ -33,7 +33,7 @@ async function init() {
 
     // Server is the single source of truth for auth
     try {
-        const res = await fetch("/api/auth/me");
+        const res = await fetch("/api/auth/me", { credentials: "same-origin" });
         const data = await res.json();
         if (data.authenticated) {
             currentUser = { name: data.name, email: data.email, picture: data.picture };

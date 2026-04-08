@@ -1,5 +1,6 @@
 """Google OAuth2 authentication router."""
 
+import base64
 import hashlib
 import hmac
 import json
@@ -26,7 +27,8 @@ def _sign_token(data: dict) -> str:
         raise ValueError("AUTH_SECRET_KEY not configured")
     payload = json.dumps(data, sort_keys=True)
     sig = hmac.new(secret.encode(), payload.encode(), hashlib.sha256).hexdigest()
-    return f"{payload}|{sig}"
+    raw = f"{payload}|{sig}"
+    return base64.urlsafe_b64encode(raw.encode()).decode()
 
 
 def _verify_token(token: str) -> dict | None:
@@ -36,7 +38,8 @@ def _verify_token(token: str) -> dict | None:
     if not secret:
         return None
     try:
-        payload, sig = token.rsplit("|", 1)
+        raw = base64.urlsafe_b64decode(token.encode()).decode()
+        payload, sig = raw.rsplit("|", 1)
         expected = hmac.new(secret.encode(), payload.encode(), hashlib.sha256).hexdigest()
         if not hmac.compare_digest(sig, expected):
             return None
@@ -112,12 +115,13 @@ async def google_callback(code: str) -> RedirectResponse:
     }
     auth_token = _sign_token(token_data)
 
-    response = RedirectResponse(url="/")
+    response = RedirectResponse(url="/", status_code=302)
     response.set_cookie(
         "auth_token", auth_token,
         httponly=True,
         samesite="lax",
         max_age=86400,
+        path="/",
     )
     return response
 
