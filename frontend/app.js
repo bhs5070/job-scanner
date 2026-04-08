@@ -486,7 +486,7 @@ function bindQuickChips() {
 bindQuickChips();
 
 // === Message Rendering ===
-function addMessage(role, content, intent) {
+function addMessage(role, content, intent, searchResults) {
     const welcome = messagesEl.querySelector(".welcome-message");
     if (welcome) welcome.remove();
 
@@ -511,6 +511,32 @@ function addMessage(role, content, intent) {
         const parsed = document.createElement("div");
         parsed.innerHTML = DOMPurify.sanitize(marked.parse(content));
         contentEl.appendChild(parsed);
+
+        // Add bookmark buttons for search results
+        if (searchResults && searchResults.length > 0 && currentUser) {
+            const bookmarkBar = document.createElement("div");
+            bookmarkBar.style.cssText = "margin-top:10px;padding-top:10px;border-top:1px solid var(--border);display:flex;flex-wrap:wrap;gap:6px";
+            searchResults.forEach((r) => {
+                const btn = document.createElement("button");
+                btn.className = "btn btn-secondary";
+                btn.style.cssText = "font-size:11px;padding:4px 10px";
+                btn.textContent = `${(r.metadata?.company || "").substring(0, 10)} 저장`;
+                btn.addEventListener("click", async () => {
+                    const res = await fetch("/api/bookmarks", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        credentials: "same-origin",
+                        body: JSON.stringify({ job_posting_id: r.job_id }),
+                    });
+                    if (res.ok) {
+                        btn.textContent = "저장됨";
+                        btn.disabled = true;
+                    }
+                });
+                bookmarkBar.appendChild(btn);
+            });
+            contentEl.appendChild(bookmarkBar);
+        }
     } else {
         contentEl.textContent = content;
     }
@@ -588,7 +614,7 @@ async function sendMessage() {
 
         const data = await res.json();
         sessionId = data.session_id;
-        addMessage("ai", data.response, data.intent);
+        addMessage("ai", data.response, data.intent, data.search_results);
     } catch (err) {
         removeLoadingMessage();
         addMessage("ai", `요청 처리 중 문제가 발생했습니다. 다시 시도해 주세요.`);
@@ -735,7 +761,7 @@ document.querySelectorAll(".header-tab").forEach((tab) => {
         document.getElementById("view-chat").classList.toggle("hidden", view !== "chat");
         document.getElementById("view-mypage").classList.toggle("hidden", view !== "mypage");
 
-        if (view === "mypage") { updateMyPageProfile(); updateMyPageFiles(); }
+        if (view === "mypage") { updateMyPageProfile(); updateMyPageFiles(); loadMyPageData(); }
     });
 });
 
@@ -808,6 +834,120 @@ function updateMyPageProfile() {
 function updateHeaderTabs() {
     headerActions.style.display = currentUser ? "flex" : "none";
 }
+
+// === Mypage Data Loading ===
+async function loadMyPageData() {
+    if (!currentUser) return;
+    await Promise.all([loadBookmarks(), loadMatchHistory(), loadDashboard()]);
+}
+
+async function loadBookmarks() {
+    try {
+        const res = await fetch("/api/bookmarks", { credentials: "same-origin" });
+        if (!res.ok) return;
+        const data = await res.json();
+        const container = document.getElementById("panel-saved");
+        if (!data.length) return;
+
+        container.innerHTML = data.map((bm) => `
+            <div class="panel-card bookmark-card">
+                <div style="display:flex;justify-content:space-between;align-items:start">
+                    <div>
+                        <strong>${DOMPurify.sanitize(bm.job_title)}</strong>
+                        <p style="color:var(--text-secondary);font-size:13px;margin-top:2px">${DOMPurify.sanitize(bm.company)}</p>
+                    </div>
+                    <span class="intent-badge">${bm.status}</span>
+                </div>
+                <div style="margin-top:8px;display:flex;gap:8px;font-size:13px">
+                    <a href="${DOMPurify.sanitize(bm.source_url)}" target="_blank" rel="noopener" style="color:var(--accent)">공고 보기</a>
+                    <button onclick="removeBookmark('${bm.id}')" style="color:var(--text-muted);background:none;border:none;cursor:pointer">삭제</button>
+                </div>
+            </div>
+        `).join("");
+    } catch { /* ignore */ }
+}
+
+async function removeBookmark(id) {
+    await fetch(`/api/bookmarks/${id}`, { method: "DELETE", credentials: "same-origin" });
+    loadBookmarks();
+}
+
+async function loadMatchHistory() {
+    try {
+        const res = await fetch("/api/history", { credentials: "same-origin" });
+        if (!res.ok) return;
+        const data = await res.json();
+        const container = document.getElementById("panel-history");
+        if (!data.length) return;
+
+        container.innerHTML = data.map((h) => `
+            <div class="panel-card">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+                    <span class="intent-badge">${h.intent}</span>
+                    <span style="font-size:11px;color:var(--text-muted)">${new Date(h.created_at).toLocaleDateString("ko-KR")}</span>
+                </div>
+                <p style="font-size:13px;color:var(--gray-700);font-weight:500;margin-bottom:4px">${DOMPurify.sanitize(h.query)}</p>
+                <p style="font-size:12px;color:var(--text-secondary);line-height:1.5">${DOMPurify.sanitize(h.response)}...</p>
+            </div>
+        `).join("");
+    } catch { /* ignore */ }
+}
+
+async function loadDashboard() {
+    const skills = userProfile?.techStack || "";
+    if (!skills) return;
+
+    try {
+        const res = await fetch(`/api/dashboard/competitiveness?skills=${encodeURIComponent(skills)}`, { credentials: "same-origin" });
+        if (!res.ok) return;
+        const data = await res.json();
+
+        // Add dashboard to profile panel
+        let dashEl = document.getElementById("competitiveness-section");
+        if (!dashEl) {
+            dashEl = document.createElement("div");
+            dashEl.id = "competitiveness-section";
+            dashEl.className = "panel-card";
+            const profilePanel = document.getElementById("panel-profile");
+            profilePanel.insertBefore(dashEl, profilePanel.querySelector(".panel-card:nth-child(2)"));
+        }
+
+        const skillBars = data.skill_analysis.slice(0, 8).map((s) => `
+            <div style="margin-bottom:8px">
+                <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:3px">
+                    <span>${DOMPurify.sanitize(s.skill)}</span>
+                    <span style="color:var(--text-secondary)">${s.job_count}건 (${s.percentage}%)</span>
+                </div>
+                <div style="height:6px;background:var(--gray-200);border-radius:3px;overflow:hidden">
+                    <div style="height:100%;width:${Math.min(s.percentage, 100)}%;background:var(--accent);border-radius:3px"></div>
+                </div>
+            </div>
+        `).join("");
+
+        dashEl.innerHTML = `
+            <h3>내 경쟁력 분석</h3>
+            <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:16px">
+                <div style="text-align:center;padding:12px;background:var(--accent-light);border-radius:10px">
+                    <div style="font-size:24px;font-weight:700;color:var(--accent)">${data.matching_jobs}</div>
+                    <div style="font-size:12px;color:var(--text-secondary)">매칭 공고</div>
+                </div>
+                <div style="text-align:center;padding:12px;background:var(--accent-light);border-radius:10px">
+                    <div style="font-size:24px;font-weight:700;color:var(--accent)">${data.match_percentage}%</div>
+                    <div style="font-size:12px;color:var(--text-secondary)">매칭률</div>
+                </div>
+                <div style="text-align:center;padding:12px;background:var(--accent-light);border-radius:10px">
+                    <div style="font-size:24px;font-weight:700;color:var(--accent)">${data.total_jobs}</div>
+                    <div style="font-size:12px;color:var(--text-secondary)">전체 공고</div>
+                </div>
+            </div>
+            <p style="font-size:12px;color:var(--text-muted);margin-bottom:12px">내 기술 스택이 채용 시장에서 얼마나 요구되는지</p>
+            ${skillBars}
+        `;
+    } catch { /* ignore */ }
+}
+
+// Make removeBookmark globally accessible
+window.removeBookmark = removeBookmark;
 
 // === Start ===
 init();

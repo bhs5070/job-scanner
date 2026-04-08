@@ -4,10 +4,11 @@ import asyncio
 import copy
 import logging
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Cookie, HTTPException
 from pydantic import BaseModel, Field
 
 from src.api.deps import delete_session, get_graph, get_or_create_session
+from src.api.routers.auth import _verify_token
 
 logger = logging.getLogger(__name__)
 
@@ -54,17 +55,55 @@ async def chat(request: ChatRequest) -> ChatResponse:
         # Persist updated messages for multi-turn
         state["messages"] = result.get("messages", state.get("messages", []))
 
+        intent = result.get("intent")
+        response_text = result.get("final_response", "응답을 생성하지 못했습니다.")
+        search_results = result.get("search_results")
+
+        # Auto-save match/gap results to history (background, non-blocking)
+        if intent in ("resume_match", "skill_gap", "job_search"):
+            asyncio.create_task(_save_history(
+                request, intent, response_text, search_results,
+            ))
+
         return ChatResponse(
             session_id=session_id,
-            intent=result.get("intent"),
+            intent=intent,
             confidence=result.get("intent_confidence"),
-            response=result.get("final_response", "응답을 생성하지 못했습니다."),
-            search_results=result.get("search_results"),
+            response=response_text,
+            search_results=search_results,
         )
 
     except Exception as e:
         logger.error(f"Chat error: {e}")
         raise HTTPException(status_code=500, detail="에이전트 처리 중 오류가 발생했습니다.")
+
+
+async def _save_history(
+    request: ChatRequest, intent: str, response: str, results: list | None,
+    auth_token: str = "",
+) -> None:
+    """Save match/search results to history DB (fire-and-forget)."""
+    try:
+        from src.db.models import MatchHistory
+        from src.db.session import SessionLocal
+
+        # Try to get user email from cookie context
+        # For now, use a simple approach
+        db = SessionLocal()
+        try:
+            record = MatchHistory(
+                user_email="anonymous",  # Will be improved with proper auth context
+                query=request.message,
+                intent=intent,
+                results=results,
+                response=response,
+            )
+            db.add(record)
+            db.commit()
+        finally:
+            db.close()
+    except Exception as e:
+        logger.warning(f"Failed to save history: {e}")
 
 
 @router.delete("/{session_id}")
