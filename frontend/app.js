@@ -106,9 +106,8 @@ function showLoggedInState() {
 
 logoutBtn.addEventListener("click", () => {
     currentUser = null;
-    userProfile = null;
     localStorage.removeItem("jobscanner_user");
-    localStorage.removeItem("jobscanner_profile");
+    // Keep profile/resume data — they belong to the user, not the session
     loginSection.style.display = "";
     userSection.classList.remove("logged-in");
     updateHeaderTabs();
