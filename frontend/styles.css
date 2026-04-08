@@ -1107,6 +1107,56 @@ textarea::placeholder {
     accent-color: var(--accent);
 }
 
+/* === File Upload Status === */
+.file-status {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px;
+    background: var(--accent-light);
+    border: 1px solid var(--blue-200);
+    border-radius: var(--radius);
+    margin-bottom: 12px;
+}
+
+.file-status svg {
+    flex-shrink: 0;
+}
+
+.file-status-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.file-status-name {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--gray-800);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.file-status-meta {
+    font-size: 12px;
+    color: var(--text-secondary);
+    margin-top: 2px;
+}
+
+.file-status-remove {
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    cursor: pointer;
+    padding: 4px;
+    border-radius: 4px;
+    font-size: 16px;
+}
+
+.file-status-remove:hover {
+    color: #ef4444;
+}
+
 /* === Tech Stack Tags === */
 .tech-search-wrapper {
     position: relative;

@@ -6,7 +6,7 @@ const statusBadge = document.getElementById("status-badge");
 const newChatBtn = document.getElementById("new-chat-btn");
 const sidebarToggle = document.getElementById("sidebar-toggle");
 const sidebar = document.getElementById("sidebar");
-const profileBtn = document.getElementById("profile-btn");
+const profileBtn = document.getElementById("profile-btn"); // may be null (replaced by mypage tabs)
 const profileModal = document.getElementById("profile-modal");
 const modalClose = document.getElementById("modal-close");
 const profileCancel = document.getElementById("profile-cancel");
@@ -88,7 +88,7 @@ function showLoggedInState() {
     userSection.classList.add("logged-in");
     document.getElementById("user-name").textContent = currentUser.name;
     document.getElementById("user-email").textContent = currentUser.email;
-    profileBtn.classList.add("visible");
+    if (profileBtn) profileBtn.classList.add("visible");
 
     updateHeaderTabs();
     const avatarEl = document.getElementById("user-avatar");
@@ -117,7 +117,7 @@ logoutBtn.addEventListener("click", () => {
 });
 
 // === Profile Modal ===
-profileBtn.addEventListener("click", openProfileModal);
+if (profileBtn) profileBtn.addEventListener("click", openProfileModal);
 modalClose.addEventListener("click", closeProfileModal);
 profileCancel.addEventListener("click", closeProfileModal);
 
@@ -590,6 +590,79 @@ async function sendMessage() {
     }
 }
 
+// === Mypage File Uploads ===
+const mypageResumeUpload = document.getElementById("mypage-resume-upload");
+const mypageResumeFile = document.getElementById("mypage-resume-file");
+const mypagePortfolioUpload = document.getElementById("mypage-portfolio-upload");
+const mypagePortfolioFile = document.getElementById("mypage-portfolio-file");
+
+if (mypageResumeUpload) {
+    mypageResumeUpload.addEventListener("click", () => mypageResumeFile.click());
+    mypageResumeFile.addEventListener("change", async () => {
+        const file = mypageResumeFile.files[0];
+        if (!file) return;
+        document.getElementById("mypage-resume-name").textContent = "업로드 중...";
+        const result = await uploadFile(file, "resume");
+        if (result && result.status === "ok") {
+            showFileStatus("mypage-resume-status", file.name, result.extracted_length);
+            document.getElementById("mypage-resume-name").textContent = "";
+        } else {
+            document.getElementById("mypage-resume-name").textContent = "업로드 실패";
+        }
+    });
+}
+
+if (mypagePortfolioUpload) {
+    mypagePortfolioUpload.addEventListener("click", () => mypagePortfolioFile.click());
+    mypagePortfolioFile.addEventListener("change", async () => {
+        const file = mypagePortfolioFile.files[0];
+        if (!file) return;
+        document.getElementById("mypage-portfolio-name").textContent = "업로드 중...";
+        const result = await uploadFile(file, "portfolio");
+        if (result && result.status === "ok") {
+            showFileStatus("mypage-portfolio-status", file.name, result.extracted_length);
+            document.getElementById("mypage-portfolio-name").textContent = "";
+        } else {
+            document.getElementById("mypage-portfolio-name").textContent = "업로드 실패";
+        }
+    });
+}
+
+function showFileStatus(containerId, fileName, extractedLength) {
+    const container = document.getElementById(containerId);
+    if (!container) return;
+
+    const sizeText = extractedLength > 0
+        ? `텍스트 ${extractedLength.toLocaleString()}자 추출 완료`
+        : "업로드 완료 (텍스트 추출 불가)";
+
+    container.innerHTML = `
+        <div class="file-status">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2">
+                <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/>
+                <polyline points="14 2 14 8 20 8"/>
+            </svg>
+            <div class="file-status-info">
+                <div class="file-status-name">${DOMPurify.sanitize(fileName)}</div>
+                <div class="file-status-meta">${sizeText}</div>
+            </div>
+            <button class="file-status-remove" onclick="this.closest('.file-status').remove()" aria-label="삭제">&times;</button>
+        </div>
+    `;
+}
+
+function updateMyPageFiles() {
+    const resumeText = localStorage.getItem("jobscanner_resume_text");
+    const portfolioText = localStorage.getItem("jobscanner_portfolio_text");
+
+    if (resumeText) {
+        showFileStatus("mypage-resume-status", "이력서 (저장됨)", resumeText.length);
+    }
+    if (portfolioText) {
+        showFileStatus("mypage-portfolio-status", "포트폴리오 (저장됨)", portfolioText.length);
+    }
+}
+
 // === View / Tab Switching ===
 document.querySelectorAll(".header-tab").forEach((tab) => {
     tab.addEventListener("click", () => {
@@ -600,7 +673,7 @@ document.querySelectorAll(".header-tab").forEach((tab) => {
         document.getElementById("view-chat").classList.toggle("hidden", view !== "chat");
         document.getElementById("view-mypage").classList.toggle("hidden", view !== "mypage");
 
-        if (view === "mypage") updateMyPageProfile();
+        if (view === "mypage") { updateMyPageProfile(); updateMyPageFiles(); }
     });
 });
 

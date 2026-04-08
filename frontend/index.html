@@ -171,9 +171,23 @@
                             </div>
                         </div>
                         <div class="panel-card">
-                            <h3>업로드된 파일</h3>
-                            <div id="profile-files-display">
-                                <p class="info-empty">이력서 또는 포트폴리오를 업로드해주세요.</p>
+                            <h3>이력서</h3>
+                            <div id="mypage-resume-status"></div>
+                            <div class="file-upload" id="mypage-resume-upload">
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--gray-400)" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                                <p>PDF, DOCX 파일을 클릭하여 업로드</p>
+                                <div class="file-name" id="mypage-resume-name"></div>
+                                <input type="file" id="mypage-resume-file" accept=".pdf,.docx" hidden>
+                            </div>
+                        </div>
+                        <div class="panel-card">
+                            <h3>포트폴리오</h3>
+                            <div id="mypage-portfolio-status"></div>
+                            <div class="file-upload" id="mypage-portfolio-upload">
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--gray-400)" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                                <p>PDF, DOCX 파일을 클릭하여 업로드</p>
+                                <div class="file-name" id="mypage-portfolio-name"></div>
+                                <input type="file" id="mypage-portfolio-file" accept=".pdf,.docx" hidden>
                             </div>
                         </div>
                     </div>
