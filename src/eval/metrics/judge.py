@@ -2,6 +2,7 @@
 
 import json
 import logging
+from functools import lru_cache
 
 from langchain_core.messages import HumanMessage, SystemMessage
 from langchain_openai import ChatOpenAI
@@ -17,6 +18,18 @@ LLM_JUDGE_METRICS = [
     "retrieval_precision", "retrieval_mrr", "context_relevance",
 ]
 
+JUDGE_MODEL = "gpt-4o"
+EVAL_QUERY_MAX_LENGTH = 1000
+EVAL_CONTEXT_MAX_LENGTH = 2000
+EVAL_RESPONSE_MAX_LENGTH = 2000
+
+
+@lru_cache(maxsize=1)
+def _get_judge() -> ChatOpenAI:
+    """Get a cached GPT-4o judge instance."""
+    settings = get_settings()
+    return ChatOpenAI(model=JUDGE_MODEL, api_key=settings.OPENAI_API_KEY, temperature=0)
+
 
 def evaluate_response(
     intent: str,
@@ -28,20 +41,15 @@ def evaluate_response(
 
     Returns dict with 8 LLM-judged scores (0-1), avg_score, and reasoning.
     """
-    settings = get_settings()
-    judge = ChatOpenAI(
-        model="gpt-4o",
-        api_key=settings.OPENAI_API_KEY,
-        temperature=0,
-    )
+    judge = _get_judge()
 
     prompt_template = load_prompt("eval_judge")
     prompt = (
         prompt_template
         .replace("{intent}", intent)
-        .replace("{query}", query[:1000])
-        .replace("{context}", (context or "(없음)")[:2000])
-        .replace("{response}", response[:2000])
+        .replace("{query}", query[:EVAL_QUERY_MAX_LENGTH])
+        .replace("{context}", (context or "(없음)")[:EVAL_CONTEXT_MAX_LENGTH])
+        .replace("{response}", response[:EVAL_RESPONSE_MAX_LENGTH])
     )
 
     try:
@@ -87,12 +95,7 @@ def evaluate_routing(predicted_intent: str, query: str) -> float:
 
     Returns 1.0 if the re-classification matches, 0.0 otherwise.
     """
-    settings = get_settings()
-    judge = ChatOpenAI(
-        model="gpt-4o",
-        api_key=settings.OPENAI_API_KEY,
-        temperature=0,
-    )
+    judge = _get_judge()
 
     prompt = (
         "Classify this query into exactly one category: "

@@ -1,6 +1,6 @@
 """Competitiveness dashboard API router."""
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends
 from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
 

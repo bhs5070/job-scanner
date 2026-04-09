@@ -20,18 +20,6 @@ class JDChunk:
     metadata: dict
 
 
-def build_overview(job: JobPosting) -> str:
-    """Build overview text from title, company, and description."""
-    parts = [
-        f"직무: {job.title}",
-        f"회사: {job.company}",
-    ]
-    if job.description:
-        # Take first 500 chars as overview summary
-        parts.append(f"주요 업무: {job.description[:500]}")
-    return "\n".join(parts)
-
-
 def build_requirements(job: JobPosting) -> str | None:
     """Build requirements text."""
     if not job.requirements:

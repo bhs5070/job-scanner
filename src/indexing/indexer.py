@@ -7,7 +7,6 @@ from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 from src.indexing.chunker import JDChunk
-from src.indexing.retriever import get_embeddings_reduced
 
 logger = logging.getLogger(__name__)
 

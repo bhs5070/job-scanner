@@ -14,14 +14,23 @@ def load_prompt(name: str) -> str:
 
     Returns:
         The prompt text content.
-    """
-    if not all(c.isalnum() or c == "_" for c in name):
-        raise ValueError(f"Invalid prompt name: {name}")
 
-    path = PROMPTS_DIR / f"{name}.txt"
-    resolved = path.resolve()
-    resolved.relative_to(PROMPTS_DIR.resolve())  # Raises ValueError if outside
+    Raises:
+        ValueError: If the name contains invalid characters or resolves outside PROMPTS_DIR.
+        FileNotFoundError: If the prompt file does not exist.
+    """
+    if not name or not all(c.isalnum() or c == "_" for c in name):
+        raise ValueError(f"Invalid prompt name: {name!r}")
+
+    resolved = (PROMPTS_DIR / f"{name}.txt").resolve()
+
+    # Path traversal guard: ensure the resolved path stays within PROMPTS_DIR
+    try:
+        resolved.relative_to(PROMPTS_DIR.resolve())
+    except ValueError:
+        raise ValueError(f"Prompt name resolves outside prompts directory: {name!r}")
 
     if not resolved.exists():
-        raise FileNotFoundError(f"Prompt file not found: {path}")
+        raise FileNotFoundError(f"Prompt file not found: {resolved}")
+
     return resolved.read_text(encoding="utf-8").strip()

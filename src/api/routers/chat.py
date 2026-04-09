@@ -7,9 +7,12 @@ import time
 
 from fastapi import APIRouter, Cookie, HTTPException
 from pydantic import BaseModel, Field
+from sqlalchemy import select
 
 from src.api.deps import delete_session, get_graph, get_or_create_session
 from src.api.routers.auth import _verify_token
+from src.db.models import Conversation, MatchHistory
+from src.db.session import SessionLocal
 
 logger = logging.getLogger(__name__)
 
@@ -94,9 +97,6 @@ async def _save_history(
 ) -> None:
     """Save match/search results to history DB (fire-and-forget)."""
     try:
-        from src.db.models import MatchHistory
-        from src.db.session import SessionLocal
-
         data = _verify_token(auth_token)
         if not data:
             return  # Don't save for unauthenticated users
@@ -123,11 +123,6 @@ async def _save_conversation(
 ) -> None:
     """Save conversation to DB (fire-and-forget)."""
     try:
-        from sqlalchemy import select
-
-        from src.db.models import Conversation
-        from src.db.session import SessionLocal
-
         data = _verify_token(auth_token)
         if not data:
             return

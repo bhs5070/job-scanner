@@ -11,7 +11,6 @@ from src.db.models import Conversation
 router = APIRouter(prefix="/api/conversations", tags=["conversations"])
 
 
-
 class ConversationItem(BaseModel):
     id: str
     session_id: str

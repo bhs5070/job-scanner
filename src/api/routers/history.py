@@ -13,7 +13,6 @@ router = APIRouter(prefix="/api/history", tags=["history"])
 HISTORY_RESPONSE_PREVIEW_LENGTH = 300  # Characters to return per history item
 
 
-
 class HistoryResponse(BaseModel):
     id: str
     query: str

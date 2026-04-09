@@ -2,8 +2,6 @@ import logging
 
 from langchain_core.messages import HumanMessage, SystemMessage
 
-MAX_RESUME_EMBED_LENGTH = 2000  # Embedding token limit safety truncation
-
 from src.agents.state import AgentState
 from src.agents.utils import (
     deduplicate_results,
@@ -16,6 +14,8 @@ from src.common.prompts import load_prompt
 from src.indexing.retriever import search_jobs
 
 logger = logging.getLogger(__name__)
+
+MAX_RESUME_EMBED_LENGTH = 2000  # Embedding token limit safety truncation
 
 
 def match(state: AgentState) -> dict:

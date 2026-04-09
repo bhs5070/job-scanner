@@ -147,5 +147,5 @@ async def get_current_user(auth_token: str = Cookie(default="")) -> dict:
 async def logout() -> JSONResponse:
     """Clear auth cookie."""
     response = JSONResponse({"status": "ok"})
-    response.delete_cookie("auth_token")
+    response.delete_cookie("auth_token", path="/")
     return response

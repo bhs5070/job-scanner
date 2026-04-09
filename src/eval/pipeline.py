@@ -8,11 +8,12 @@ from sqlalchemy.orm import Session
 from src.db.models import EvalResult, MatchHistory
 from src.eval.metrics.judge import LLM_JUDGE_METRICS, evaluate_response, evaluate_routing
 
-EVAL_BATCH_LIMIT = 50  # Default max records per eval run
-CONTEXT_MAX_LENGTH = 3000  # Max context string length stored in DB
-CONTEXT_DOC_PREVIEW = 300  # Characters per result document in context
-
 logger = logging.getLogger(__name__)
+
+EVAL_BATCH_LIMIT = 50           # Default max records per eval run
+CONTEXT_MAX_LENGTH = 3000       # Max context string length stored in DB
+CONTEXT_DOC_PREVIEW = 300       # Characters per result document in context
+MLFLOW_EXPERIMENT_NAME = "job-scanner-eval"
 
 
 def run_batch_eval(db: Session, limit: int = EVAL_BATCH_LIMIT) -> dict:
@@ -118,9 +119,6 @@ def _build_context(results: list | None) -> str:
         doc = r.get("document", "")[:CONTEXT_DOC_PREVIEW]
         parts.append(f"{meta.get('title', '')} - {meta.get('company', '')}: {doc}")
     return "\n".join(parts)
-
-
-MLFLOW_EXPERIMENT_NAME = "job-scanner-eval"
 
 
 def log_to_mlflow(summary: dict) -> None:
