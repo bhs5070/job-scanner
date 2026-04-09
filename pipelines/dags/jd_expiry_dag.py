@@ -1,17 +1,14 @@
 """DAG 4: Job Posting Expiry Detection
 
 Checks bookmarked job posting URLs weekly.
-Marks expired/closed postings as inactive.
+Uses BashOperator to avoid SQLAlchemy version conflict.
 """
 
-import logging
 from datetime import timedelta
 
 from airflow import DAG
-from airflow.operators.python import PythonOperator
+from airflow.operators.bash import BashOperator
 from airflow.utils.dates import days_ago
-
-logger = logging.getLogger(__name__)
 
 DEFAULT_ARGS = {
     "owner": "job-scanner",
@@ -20,71 +17,7 @@ DEFAULT_ARGS = {
     "retry_delay": timedelta(minutes=5),
 }
 
-
-def _check_expired_postings(**kwargs) -> dict:
-    """Check bookmarked job posting URLs for expiry."""
-    import requests
-    from sqlalchemy import select, update
-
-    from src.db.models import Bookmark, JobPosting
-    from src.db.session import SessionLocal
-
-    db = SessionLocal()
-    expired_count = 0
-
-    try:
-        # Get all bookmarked job posting IDs
-        bookmarked_ids = db.scalars(
-            select(Bookmark.job_posting_id).distinct()
-        ).all()
-
-        if not bookmarked_ids:
-            logger.info("No bookmarked postings to check.")
-            return {"checked": 0, "expired": 0}
-
-        # Check each posting's URL
-        postings = db.scalars(
-            select(JobPosting).where(
-                JobPosting.id.in_(bookmarked_ids),
-                JobPosting.is_active.is_(True),
-            )
-        ).all()
-
-        for posting in postings:
-            try:
-                resp = requests.head(
-                    posting.source_url, timeout=10, allow_redirects=True,
-                    headers={"User-Agent": "JobScanner/1.0"},
-                )
-                if resp.status_code in (404, 410, 403):
-                    posting.is_active = False
-                    expired_count += 1
-                    logger.info(f"Expired: {posting.title} ({posting.source_url})")
-            except requests.RequestException:
-                # Connection error — might be temporary, skip
-                pass
-
-        db.commit()
-        logger.info(f"Checked {len(postings)}, expired: {expired_count}")
-        return {"checked": len(postings), "expired": expired_count}
-
-    finally:
-        db.close()
-
-
-def _deactivate_old_postings(**kwargs) -> dict:
-    """Deactivate postings older than 90 days without updates."""
-    from src.db.crud.job_postings import deactivate_expired
-    from src.db.session import SessionLocal
-
-    db = SessionLocal()
-    try:
-        count = deactivate_expired(db)
-        logger.info(f"Deactivated {count} old postings (90+ days)")
-        return {"deactivated": count}
-    finally:
-        db.close()
-
+PIPELINE_CMD = "cd /opt/airflow && PYTHONPATH=/opt/airflow python -c"
 
 with DAG(
     dag_id="jd_expiry_check",
@@ -97,14 +30,34 @@ with DAG(
     tags=["expiry", "jd"],
 ) as dag:
 
-    check_task = PythonOperator(
-        task_id="check_expired_postings",
-        python_callable=_check_expired_postings,
-    )
+    check_expiry = BashOperator(
+        task_id="check_and_deactivate",
+        bash_command=f"""{PIPELINE_CMD} "
+import requests
+from sqlalchemy import select
+from src.db.models import Bookmark, JobPosting
+from src.db.session import SessionLocal
+from src.db.crud.job_postings import deactivate_expired
 
-    deactivate_task = PythonOperator(
-        task_id="deactivate_old_postings",
-        python_callable=_deactivate_old_postings,
-    )
+db = SessionLocal()
 
-    check_task >> deactivate_task
+# Check bookmarked URLs
+bookmarked_ids = list(db.scalars(select(Bookmark.job_posting_id).distinct()).all())
+postings = db.scalars(select(JobPosting).where(JobPosting.id.in_(bookmarked_ids), JobPosting.is_active.is_(True))).all() if bookmarked_ids else []
+expired = 0
+for p in postings:
+    try:
+        r = requests.head(p.source_url, timeout=10, allow_redirects=True, headers={{'User-Agent': 'JobScanner/1.0'}})
+        if r.status_code in (404, 410, 403):
+            p.is_active = False; expired += 1
+    except: pass
+db.commit()
+print(f'URL check: {{len(postings)}} checked, {{expired}} expired')
+
+# Deactivate old postings (90+ days)
+count = deactivate_expired(db)
+print(f'Old postings deactivated: {{count}}')
+db.close()
+"
+""",
+    )

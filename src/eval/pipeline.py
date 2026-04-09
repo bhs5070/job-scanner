@@ -115,9 +115,12 @@ def _build_context(results: list | None) -> str:
     parts = []
     for r in results_list[:5]:
         meta = r.get("metadata", {})
-        doc = r.get("document", "")[:300]
+        doc = r.get("document", "")[:CONTEXT_DOC_PREVIEW]
         parts.append(f"{meta.get('title', '')} - {meta.get('company', '')}: {doc}")
     return "\n".join(parts)
+
+
+MLFLOW_EXPERIMENT_NAME = "job-scanner-eval"
 
 
 def log_to_mlflow(summary: dict) -> None:
@@ -125,7 +128,7 @@ def log_to_mlflow(summary: dict) -> None:
     try:
         import mlflow
 
-        mlflow.set_experiment("job-scanner-eval")
+        mlflow.set_experiment(MLFLOW_EXPERIMENT_NAME)
         with mlflow.start_run():
             mlflow.log_metric("evaluated_count", summary["evaluated"])
             mlflow.log_metric("skipped_count", summary["skipped"])

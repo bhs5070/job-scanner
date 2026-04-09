@@ -1,3 +1,8 @@
+// === Constants ===
+const MAX_RESUME_CONTEXT_LENGTH = 3000;
+const MAX_PORTFOLIO_CONTEXT_LENGTH = 2000;
+const MAX_FILE_SIZE_BYTES = 10 * 1024 * 1024; // 10MB
+
 // === DOM Elements ===
 const messagesEl = document.getElementById("messages");
 const inputEl = document.getElementById("message-input");
@@ -378,13 +383,13 @@ function buildProfileContext() {
     const resumeText = localStorage.getItem("jobscanner_resume_text");
     if (resumeText) {
         // Truncate to avoid exceeding context limits
-        const truncated = resumeText.substring(0, 3000);
+        const truncated = resumeText.substring(0, MAX_RESUME_CONTEXT_LENGTH);
         parts.push(`\n[이력서 내용]\n${truncated}`);
     }
 
     const portfolioText = localStorage.getItem("jobscanner_portfolio_text");
     if (portfolioText) {
-        const truncated = portfolioText.substring(0, 2000);
+        const truncated = portfolioText.substring(0, MAX_PORTFOLIO_CONTEXT_LENGTH);
         parts.push(`\n[포트폴리오 내용]\n${truncated}`);
     }
 
@@ -710,7 +715,7 @@ function stageFile(type, file) {
         alert("PDF 또는 DOCX 파일만 업로드 가능합니다.");
         return;
     }
-    if (file.size > 10 * 1024 * 1024) {
+    if (file.size > MAX_FILE_SIZE_BYTES) {
         alert("파일 크기는 10MB 이하여야 합니다.");
         return;
     }
