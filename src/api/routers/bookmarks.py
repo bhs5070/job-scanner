@@ -83,3 +83,22 @@ async def remove_bookmark(
         db.delete(bm)
         db.commit()
     return {"status": "ok"}
+
+
+class StatusUpdate(BaseModel):
+    status: str  # interested / applied / interview / offer / rejected
+
+
+@router.patch("/{bookmark_id}/status")
+async def update_bookmark_status(
+    bookmark_id: str,
+    req: StatusUpdate,
+    email: str = Depends(get_current_user_email),
+    db: Session = Depends(get_db),
+) -> dict:
+    bm = db.get(Bookmark, uuid.UUID(bookmark_id))
+    if not bm or bm.user_email != email:
+        return {"error": "not found"}
+    bm.status = req.status
+    db.commit()
+    return {"status": "ok"}

@@ -7,6 +7,7 @@ from langgraph.graph import END, StateGraph
 
 from src.agents.chitchat import chitchat
 from src.agents.gap import gap
+from src.agents.interview import interview
 from src.agents.match import match
 from src.agents.respond import respond
 from src.agents.router import route, route_by_intent
@@ -26,6 +27,7 @@ def build_graph() -> StateGraph:
     graph.add_node("gap", gap)
     graph.add_node("trend", trend)
     graph.add_node("chitchat", chitchat)
+    graph.add_node("interview", interview)
     graph.add_node("respond", respond)
 
     # Entry point
@@ -40,6 +42,7 @@ def build_graph() -> StateGraph:
             "match": "match",
             "gap": "gap",
             "trend": "trend",
+            "interview": "interview",
             "chitchat": "chitchat",
         },
     )
@@ -50,6 +53,7 @@ def build_graph() -> StateGraph:
     graph.add_edge("gap", "respond")
     graph.add_edge("trend", "respond")
     graph.add_edge("chitchat", "respond")
+    graph.add_edge("interview", "respond")
 
     # Respond exits the graph
     graph.add_edge("respond", END)

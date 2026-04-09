@@ -9,7 +9,7 @@ from src.common.prompts import load_prompt
 
 logger = logging.getLogger(__name__)
 
-VALID_INTENTS = {"job_search", "resume_match", "skill_gap", "trend", "chitchat"}
+VALID_INTENTS = {"job_search", "resume_match", "skill_gap", "trend", "interview", "chitchat"}
 
 
 def route(state: AgentState) -> dict:
@@ -68,6 +68,7 @@ def route_by_intent(state: AgentState) -> str:
         "resume_match": "match",
         "skill_gap": "gap",
         "trend": "trend",
+        "interview": "interview",
         "chitchat": "chitchat",
     }
 

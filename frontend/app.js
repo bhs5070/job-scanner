@@ -58,6 +58,7 @@ async function init() {
                 // First login — show onboarding
                 openProfileModal();
             }
+            loadConversationList();
         }
     } catch {
         // Offline fallback
@@ -575,6 +576,12 @@ function addMessage(role, content, intent, searchResults) {
     msg.appendChild(avatar);
     msg.appendChild(contentEl);
     messagesEl.appendChild(msg);
+
+    // Add feedback buttons to AI messages
+    if (role === "ai" && currentUser && sessionId) {
+        addFeedbackButtons(contentEl, sessionId);
+    }
+
     scrollToBottom();
 }
 
@@ -646,6 +653,7 @@ async function sendMessage() {
         const data = await res.json();
         sessionId = data.session_id;
         addMessage("ai", data.response, data.intent, data.search_results);
+        loadConversationList();
     } catch (err) {
         removeLoadingMessage();
         addMessage("ai", `요청 처리 중 문제가 발생했습니다. 다시 시도해 주세요.`);
@@ -880,6 +888,10 @@ async function loadBookmarks() {
         const container = document.getElementById("panel-saved");
         if (!data.length) return;
 
+        const statusLabels = {
+            interested: "관심 중", applied: "지원 완료",
+            interview: "면접", offer: "합격", rejected: "불합격",
+        };
         container.innerHTML = data.map((bm) => `
             <div class="panel-card bookmark-card">
                 <div style="display:flex;justify-content:space-between;align-items:start">
@@ -887,7 +899,11 @@ async function loadBookmarks() {
                         <strong>${DOMPurify.sanitize(bm.job_title)}</strong>
                         <p style="color:var(--text-secondary);font-size:13px;margin-top:2px">${DOMPurify.sanitize(bm.company)}</p>
                     </div>
-                    <span class="intent-badge">${bm.status}</span>
+                    <select class="status-select" onchange="updateBookmarkStatus('${bm.id}', this.value)">
+                        ${Object.entries(statusLabels).map(([k, v]) =>
+                            `<option value="${k}" ${bm.status === k ? "selected" : ""}>${v}</option>`
+                        ).join("")}
+                    </select>
                 </div>
                 <div style="margin-top:8px;display:flex;gap:8px;font-size:13px">
                     <a href="${DOMPurify.sanitize(bm.source_url)}" target="_blank" rel="noopener" style="color:var(--accent)">공고 보기</a>
@@ -977,8 +993,97 @@ async function loadDashboard() {
     } catch { /* ignore */ }
 }
 
-// Make removeBookmark globally accessible
+// Make functions globally accessible
 window.removeBookmark = removeBookmark;
+window.updateBookmarkStatus = async function(id, status) {
+    await fetch(`/api/bookmarks/${id}/status`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        credentials: "same-origin",
+        body: JSON.stringify({ status }),
+    });
+};
+
+// === Conversation History Sidebar ===
+async function loadConversationList() {
+    if (!currentUser) return;
+    const listEl = document.getElementById("conversation-list");
+    const itemsEl = document.getElementById("conversation-items");
+    try {
+        const res = await fetch("/api/conversations", { credentials: "same-origin" });
+        if (!res.ok) return;
+        const data = await res.json();
+        if (data.length === 0) { listEl.style.display = "none"; return; }
+
+        listEl.style.display = "block";
+        itemsEl.innerHTML = data.map((c) => `
+            <div class="conv-item" data-session="${DOMPurify.sanitize(c.session_id)}">
+                <div class="conv-item-title">${DOMPurify.sanitize(c.title)}</div>
+                <div class="conv-item-date">${new Date(c.updated_at).toLocaleDateString("ko-KR")}</div>
+            </div>
+        `).join("");
+
+        itemsEl.querySelectorAll(".conv-item").forEach((el) => {
+            el.addEventListener("click", () => loadConversation(el.dataset.session));
+        });
+    } catch { /* ignore */ }
+}
+
+async function loadConversation(sid) {
+    try {
+        const res = await fetch(`/api/conversations/${sid}`, { credentials: "same-origin" });
+        if (!res.ok) return;
+        const data = await res.json();
+
+        sessionId = sid;
+        messagesEl.innerHTML = "";
+        if (data.messages) {
+            data.messages.forEach((m) => {
+                addMessage(m.role === "user" ? "user" : "ai", m.content);
+            });
+        }
+        document.getElementById("tab-chat").click();
+        closeSidebar();
+    } catch { /* ignore */ }
+}
+
+// === Feedback (Thumbs Up/Down) ===
+function addFeedbackButtons(messageEl, sessionId) {
+    const bar = document.createElement("div");
+    bar.className = "feedback-bar";
+
+    const upBtn = document.createElement("button");
+    upBtn.className = "feedback-btn";
+    upBtn.innerHTML = "&#x1F44D; 도움됨";
+    upBtn.addEventListener("click", () => sendFeedback(sessionId, "positive", upBtn, downBtn));
+
+    const downBtn = document.createElement("button");
+    downBtn.className = "feedback-btn";
+    downBtn.innerHTML = "&#x1F44E; 아쉬움";
+    downBtn.addEventListener("click", () => sendFeedback(sessionId, "negative", upBtn, downBtn));
+
+    bar.appendChild(upBtn);
+    bar.appendChild(downBtn);
+    messageEl.appendChild(bar);
+}
+
+async function sendFeedback(sid, type, upBtn, downBtn) {
+    upBtn.disabled = true;
+    downBtn.disabled = true;
+    if (type === "positive") {
+        upBtn.classList.add("selected-positive");
+    } else {
+        downBtn.classList.add("selected-negative");
+    }
+    try {
+        await fetch("/api/feedback", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            credentials: "same-origin",
+            body: JSON.stringify({ session_id: sid, feedback: type }),
+        });
+    } catch { /* ignore */ }
+}
 
 // === Start ===
 init();

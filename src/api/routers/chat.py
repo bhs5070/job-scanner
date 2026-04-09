@@ -65,11 +65,14 @@ async def chat(request: ChatRequest, auth_token: str = Cookie(default="")) -> Ch
         response_text = result.get("final_response", "응답을 생성하지 못했습니다.")
         search_results = result.get("search_results")
 
-        # Auto-save match/gap results to history (background, non-blocking)
+        # Auto-save to history + conversation (background)
         if intent in ("resume_match", "skill_gap", "job_search"):
             asyncio.create_task(_save_history(
                 request, intent, response_text, search_results, auth_token,
             ))
+        asyncio.create_task(_save_conversation(
+            session_id, request.message, response_text, auth_token,
+        ))
 
         return ChatResponse(
             session_id=session_id,
@@ -113,6 +116,53 @@ async def _save_history(
             db.close()
     except Exception as e:
         logger.warning(f"Failed to save history: {e}")
+
+
+async def _save_conversation(
+    session_id: str, user_msg: str, ai_msg: str, auth_token: str = "",
+) -> None:
+    """Save conversation to DB (fire-and-forget)."""
+    try:
+        from sqlalchemy import select
+
+        from src.db.models import Conversation
+        from src.db.session import SessionLocal
+
+        data = _verify_token(auth_token)
+        if not data:
+            return
+
+        db = SessionLocal()
+        try:
+            conv = db.scalars(
+                select(Conversation).where(Conversation.session_id == session_id)
+            ).first()
+
+            title = user_msg[:30] + "..." if len(user_msg) > 30 else user_msg
+            msgs = []
+            if conv and conv.messages:
+                msgs = conv.messages
+
+            msgs.append({"role": "user", "content": user_msg})
+            msgs.append({"role": "ai", "content": ai_msg})
+
+            if conv:
+                conv.messages = msgs
+                conv.title = conv.title if len(msgs) > 2 else title
+            else:
+                conv = Conversation(
+                    user_email=data["email"],
+                    session_id=session_id,
+                    title=title,
+                    messages=msgs,
+                )
+                db.add(conv)
+
+            db.commit()
+        finally:
+            db.close()
+    except Exception as e:
+        logger.warning(f"Failed to save conversation: {e}")
 
 
 @router.delete("/{session_id}")

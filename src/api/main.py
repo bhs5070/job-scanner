@@ -12,6 +12,7 @@ from src.api.routers.chat import router as chat_router
 from src.api.routers.conversations import router as conversations_router
 from src.api.routers.dashboard import router as dashboard_router
 from src.api.routers.eval import router as eval_router
+from src.api.routers.feedback import router as feedback_router
 from src.api.routers.history import router as history_router
 from src.api.routers.profile import router as profile_router
 
@@ -40,6 +41,7 @@ app.include_router(chat_router)
 app.include_router(conversations_router)
 app.include_router(dashboard_router)
 app.include_router(eval_router)
+app.include_router(feedback_router)
 app.include_router(history_router)
 app.include_router(profile_router)
 
