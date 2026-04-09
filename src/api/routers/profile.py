@@ -6,12 +6,11 @@ from pathlib import Path
 
 from fastapi import APIRouter, Cookie, Depends, File, Form, HTTPException, UploadFile
 from pydantic import BaseModel
-from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from src.api.deps import get_db
 from src.api.routers.auth import _verify_token
 from src.db.models import UserProfile
-from src.db.session import SessionLocal
 
 logger = logging.getLogger(__name__)
 
@@ -31,14 +30,6 @@ def _require_auth(auth_token: str = Cookie(default="")) -> dict:
     return data
 
 
-def _get_db():
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
-
-
 # === Profile CRUD ===
 
 class ProfileData(BaseModel):
@@ -56,7 +47,7 @@ class ProfileData(BaseModel):
 @router.get("/me")
 async def get_profile(
     user: dict = Depends(_require_auth),
-    db: Session = Depends(_get_db),
+    db: Session = Depends(get_db),
 ) -> dict:
     """Get current user's profile from DB."""
     profile = db.get(UserProfile, user["email"])
@@ -84,7 +75,7 @@ async def get_profile(
 async def save_profile(
     data: ProfileData,
     user: dict = Depends(_require_auth),
-    db: Session = Depends(_get_db),
+    db: Session = Depends(get_db),
 ) -> dict:
     """Save or update user profile in DB."""
     profile = db.get(UserProfile, user["email"])
@@ -113,7 +104,7 @@ async def upload_file(
     file: UploadFile = File(...),
     type: str = Form(...),
     user: dict = Depends(_require_auth),
-    db: Session = Depends(_get_db),
+    db: Session = Depends(get_db),
 ) -> dict:
     """Upload resume/portfolio, extract text, save to DB."""
     if type not in ("resume", "portfolio"):

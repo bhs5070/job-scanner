@@ -10,6 +10,8 @@ from src.common.prompts import load_prompt
 logger = logging.getLogger(__name__)
 
 VALID_INTENTS = {"job_search", "resume_match", "skill_gap", "trend", "interview", "chitchat"}
+MIN_CONFIDENCE_THRESHOLD = 0.6  # Fall back to chitchat below this confidence
+ROUTER_CONTEXT_MESSAGES = 3  # Number of recent messages to include for routing context
 
 
 def route(state: AgentState) -> dict:
@@ -17,9 +19,9 @@ def route(state: AgentState) -> dict:
     llm = get_llm(temperature=0)
     system_prompt = load_prompt("router")
 
-    # Use last 3 messages for context
+    # Use last N messages for context
     messages = state.get("messages", [])
-    recent = messages[-3:] if len(messages) > 3 else messages
+    recent = messages[-ROUTER_CONTEXT_MESSAGES:] if len(messages) > ROUTER_CONTEXT_MESSAGES else messages
     context = "\n".join(
         f"{'사용자' if isinstance(m, HumanMessage) else 'AI'}: {m.content}"
         for m in recent
@@ -46,7 +48,7 @@ def route(state: AgentState) -> dict:
             intent = "chitchat"
             confidence = 0.5
 
-        if confidence < 0.6:
+        if confidence < MIN_CONFIDENCE_THRESHOLD:
             intent = "chitchat"
 
         logger.info(f"Router: intent={intent}, confidence={confidence}")

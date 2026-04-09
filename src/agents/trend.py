@@ -1,6 +1,7 @@
 import logging
 
 from langchain_core.messages import HumanMessage, SystemMessage
+from sqlalchemy.orm import Session
 
 from src.agents.state import AgentState
 from src.agents.utils import get_llm, render_prompt
@@ -11,7 +12,7 @@ from src.db.session import SessionLocal
 logger = logging.getLogger(__name__)
 
 
-def _build_trend_data(db) -> str:
+def _build_trend_data(db: Session) -> str:
     """Build trend data text from DB aggregation."""
     stats = get_posting_stats(db)
     tech_counts = get_tech_stack_counts(db)

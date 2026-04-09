@@ -1,18 +1,18 @@
 """pgvector-based retriever for job posting search."""
 
 import logging
-import uuid
 from dataclasses import dataclass
 
+from openai import OpenAI
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 from src.common.config import get_settings
-from src.indexing.embedder import get_embeddings
 
 logger = logging.getLogger(__name__)
 
 EMBEDDING_DIMENSIONS = 1536  # Reduced from 3072 for HNSW index compatibility
+EMBEDDING_BATCH_SIZE = 100  # Max texts per OpenAI embedding API call
 
 
 @dataclass
@@ -29,13 +29,11 @@ class SearchResult:
 def get_embeddings_reduced(texts: list[str]) -> list[list[float]]:
     """Generate embeddings with reduced dimensions for pgvector."""
     settings = get_settings()
-    from openai import OpenAI
-
     client = OpenAI(api_key=settings.OPENAI_API_KEY)
     all_embeddings: list[list[float]] = []
 
-    for i in range(0, len(texts), 100):
-        batch = texts[i : i + 100]
+    for i in range(0, len(texts), EMBEDDING_BATCH_SIZE):
+        batch = texts[i : i + EMBEDDING_BATCH_SIZE]
         response = client.embeddings.create(
             model=settings.EMBEDDING_MODEL,
             input=batch,
@@ -72,14 +70,17 @@ def search_jobs(
         embedding_str = "[" + ",".join(str(x) for x in query_embedding) + "]"
 
         # Build SQL query with filters
-        conditions = []
+        # Use parameterized values for all user-supplied data to prevent SQL injection
+        conditions = ["1=1"]
+        params: dict = {"embedding": embedding_str, "limit": n_results}
         if where:
             if where.get("is_active") is True:
                 conditions.append("jp.is_active = true")
             if where.get("chunk_type"):
-                conditions.append(f"je.chunk_type = '{where['chunk_type']}'")
+                conditions.append("je.chunk_type = :chunk_type")
+                params["chunk_type"] = where["chunk_type"]
 
-        where_clause = " AND ".join(conditions) if conditions else "1=1"
+        where_clause = " AND ".join(conditions)
 
         sql = text(f"""
             SELECT
@@ -99,7 +100,7 @@ def search_jobs(
             LIMIT :limit
         """)
 
-        rows = db.execute(sql, {"embedding": embedding_str, "limit": n_results}).fetchall()
+        rows = db.execute(sql, params).fetchall()
 
         results = []
         for row in rows:

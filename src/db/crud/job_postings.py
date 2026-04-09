@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime, timedelta, timezone
 
-from sqlalchemy import select, update
+from sqlalchemy import func, select, update
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import Session
 
@@ -115,8 +115,6 @@ def get_tech_stack_counts(db: Session, limit: int = 20) -> list[tuple[str, int]]
 
 def get_posting_stats(db: Session) -> dict:
     """Get basic posting statistics."""
-    from sqlalchemy import func
-
     total = db.scalar(
         select(func.count(JobPosting.id)).where(JobPosting.is_active.is_(True))
     )

@@ -5,13 +5,15 @@ RUN apt-get update && apt-get install -y --no-install-recommends gcc libpq-dev &
 
 USER airflow
 
-COPY requirements.txt /tmp/requirements.txt
+# Install only DAG runtime deps (no SQLAlchemy ORM models to avoid conflicts)
 RUN pip install --no-cache-dir \
-    sqlalchemy==2.0.35 psycopg2-binary==2.9.9 \
-    requests==2.32.3 beautifulsoup4==4.12.3 lxml==5.3.0 \
-    langchain==0.3.7 langchain-openai==0.2.8 openai>=1.54.0 \
-    chromadb==0.5.18 pydantic-settings==2.5.2 python-dotenv==1.0.1 \
-    mlflow==2.17.2 PyPDF2==3.0.1 pgvector==0.3.6
+    psycopg2-binary==2.9.9 \
+    requests==2.32.3 \
+    beautifulsoup4==4.12.3 \
+    lxml==5.3.0 \
+    openai>=1.54.0 \
+    pydantic-settings==2.5.2 \
+    python-dotenv==1.0.1
 
-COPY --chown=airflow:root src/ /opt/airflow/src/
+# Only copy DAG files (no src/ models to avoid SQLAlchemy conflicts)
 COPY --chown=airflow:root pipelines/dags/ /opt/airflow/dags/

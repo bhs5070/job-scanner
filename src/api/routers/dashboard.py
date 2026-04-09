@@ -1,15 +1,15 @@
 """Competitiveness dashboard API router."""
 
-from src.api.deps import get_current_user_email, get_db
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
 
+from src.api.deps import get_current_user_email, get_db
 from src.db.models import Bookmark, JobPosting
 
 router = APIRouter(prefix="/api/dashboard", tags=["dashboard"])
 
-
+MAX_SKILLS = 20  # Prevent excessive DB queries per request
 
 
 @router.get("/competitiveness")
@@ -26,7 +26,7 @@ async def get_competitiveness(
     if not skills or total_active == 0:
         return {"total_jobs": total_active, "skill_analysis": [], "matching_jobs": 0, "match_percentage": 0, "bookmark_count": 0}
 
-    skill_list = [s.strip() for s in skills.split(",") if s.strip()]
+    skill_list = [s.strip() for s in skills.split(",") if s.strip()][:MAX_SKILLS]
 
     skill_analysis = []
     for skill in skill_list:

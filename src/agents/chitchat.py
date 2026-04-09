@@ -8,6 +8,8 @@ from src.common.prompts import load_prompt
 
 logger = logging.getLogger(__name__)
 
+CHITCHAT_CONTEXT_WINDOW = 10  # Number of recent messages to include in context
+
 
 def chitchat(state: AgentState) -> dict:
     """Handle general conversation and fallback responses."""
@@ -15,7 +17,7 @@ def chitchat(state: AgentState) -> dict:
     system_prompt = load_prompt("chitchat")
 
     messages_list = state.get("messages", [])
-    recent = messages_list[-10:] if len(messages_list) > 10 else messages_list
+    recent = messages_list[-CHITCHAT_CONTEXT_WINDOW:] if len(messages_list) > CHITCHAT_CONTEXT_WINDOW else messages_list
 
     messages = [SystemMessage(content=system_prompt)]
     messages.extend(recent)

@@ -7,6 +7,8 @@ from langchain_openai import ChatOpenAI
 from src.common.config import get_settings
 from src.indexing.retriever import SearchResult
 
+DOC_PREVIEW_LENGTH = 300  # Characters to show in LLM context per result
+
 
 @lru_cache(maxsize=4)
 def get_llm(temperature: float = 0) -> ChatOpenAI:
@@ -37,7 +39,7 @@ def format_results_for_llm(results: list[SearchResult]) -> str:
     for i, r in enumerate(results, 1):
         meta = r.metadata
         score = round(1 - r.distance, 2) if r.distance else 0
-        doc_preview = r.document[:300] if r.document else ""
+        doc_preview = r.document[:DOC_PREVIEW_LENGTH] if r.document else ""
         parts.append(
             f"[공고 {i}]\n"
             f"직무: {meta.get('title', 'N/A')}\n"

@@ -8,10 +8,14 @@ from sqlalchemy.orm import Session
 from src.db.models import EvalResult, MatchHistory
 from src.eval.metrics.judge import LLM_JUDGE_METRICS, evaluate_response, evaluate_routing
 
+EVAL_BATCH_LIMIT = 50  # Default max records per eval run
+CONTEXT_MAX_LENGTH = 3000  # Max context string length stored in DB
+CONTEXT_DOC_PREVIEW = 300  # Characters per result document in context
+
 logger = logging.getLogger(__name__)
 
 
-def run_batch_eval(db: Session, limit: int = 50) -> dict:
+def run_batch_eval(db: Session, limit: int = EVAL_BATCH_LIMIT) -> dict:
     """Evaluate match_history records that haven't been evaluated yet.
 
     Scores 10 metrics per record:
@@ -67,7 +71,7 @@ def run_batch_eval(db: Session, limit: int = 50) -> dict:
             intent=record.intent,
             query=record.query,
             response=record.response,
-            context=context[:3000] if context else None,
+            context=context[:CONTEXT_MAX_LENGTH] if context else None,
             relevance=scores["relevance"],
             groundedness=scores["groundedness"],
             helpfulness=scores["helpfulness"],
@@ -103,7 +107,7 @@ def run_batch_eval(db: Session, limit: int = 50) -> dict:
     return summary
 
 
-def _build_context(results) -> str:
+def _build_context(results: list | None) -> str:
     """Build context string from match_history results JSON."""
     if not results:
         return ""

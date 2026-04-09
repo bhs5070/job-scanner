@@ -5,6 +5,7 @@ from collections.abc import Generator
 from functools import lru_cache
 
 from fastapi import Cookie, HTTPException
+from langgraph.graph.state import CompiledStateGraph
 from sqlalchemy.orm import Session
 
 from src.agents import AgentState, compile_graph
@@ -16,9 +17,8 @@ _sessions: dict[str, AgentState] = {}
 
 
 @lru_cache(maxsize=1)
-def get_graph() -> "CompiledStateGraph":
+def get_graph() -> CompiledStateGraph:
     """Get the compiled agent graph (singleton)."""
-    from langgraph.graph.state import CompiledStateGraph  # noqa: F811
     return compile_graph()
 
 

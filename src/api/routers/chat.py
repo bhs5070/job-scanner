@@ -3,8 +3,9 @@
 import asyncio
 import copy
 import logging
+import time
 
-from fastapi import APIRouter, Cookie, HTTPException, Request
+from fastapi import APIRouter, Cookie, HTTPException
 from pydantic import BaseModel, Field
 
 from src.api.deps import delete_session, get_graph, get_or_create_session
@@ -50,13 +51,12 @@ async def chat(request: ChatRequest, auth_token: str = Cookie(default="")) -> Ch
     invoke_state["error"] = None
 
     try:
-        import time as _time
-        _start = _time.time()
+        _start = time.time()
 
         # graph.invoke is synchronous — run in thread pool to avoid blocking the event loop
         result = await asyncio.to_thread(graph.invoke, invoke_state)
 
-        _latency_ms = int((_time.time() - _start) * 1000)
+        _latency_ms = int((time.time() - _start) * 1000)
 
         # Persist updated messages for multi-turn
         state["messages"] = result.get("messages", state.get("messages", []))

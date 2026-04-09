@@ -2,6 +2,8 @@ import logging
 
 from langchain_core.messages import HumanMessage, SystemMessage
 
+MAX_RESUME_EMBED_LENGTH = 2000  # Embedding token limit safety truncation
+
 from src.agents.state import AgentState
 from src.agents.utils import (
     deduplicate_results,
@@ -23,7 +25,7 @@ def match(state: AgentState) -> dict:
 
     try:
         # Truncate long resume text for embedding
-        query = user_input[:2000]
+        query = user_input[:MAX_RESUME_EMBED_LENGTH]
 
         raw_results = search_jobs(query=query, n_results=10, where={"is_active": True})
         results = deduplicate_results(raw_results)[:5]

@@ -3,7 +3,10 @@
 Connects all agent nodes and defines routing edges.
 """
 
+from __future__ import annotations
+
 from langgraph.graph import END, StateGraph
+from langgraph.graph.state import CompiledStateGraph
 
 from src.agents.chitchat import chitchat
 from src.agents.gap import gap
@@ -61,7 +64,6 @@ def build_graph() -> StateGraph:
     return graph
 
 
-def compile_graph() -> "CompiledStateGraph":
+def compile_graph() -> CompiledStateGraph:
     """Compile the graph for execution."""
-    from langgraph.graph.state import CompiledStateGraph  # noqa: F811
     return build_graph().compile()

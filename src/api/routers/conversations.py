@@ -1,15 +1,14 @@
 """Conversation history API router."""
 
-from src.api.deps import get_current_user_email, get_db
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from src.api.deps import get_current_user_email, get_db
 from src.db.models import Conversation
 
 router = APIRouter(prefix="/api/conversations", tags=["conversations"])
-
 
 
 

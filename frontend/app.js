@@ -341,7 +341,11 @@ async function uploadFile(file, type) {
     formData.append("file", file);
     formData.append("type", type);
     try {
-        const res = await fetch("/api/profile/upload", { method: "POST", body: formData });
+        const res = await fetch("/api/profile/upload", {
+            method: "POST",
+            credentials: "same-origin",
+            body: formData,
+        });
         const data = await res.json();
         // Store extracted text for agent context
         if (data.extracted_text) {

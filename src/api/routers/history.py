@@ -1,15 +1,16 @@
 """Match history API router."""
 
-from src.api.deps import get_current_user_email, get_db
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends
 from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from src.api.deps import get_current_user_email, get_db
 from src.db.models import MatchHistory
 
 router = APIRouter(prefix="/api/history", tags=["history"])
 
+HISTORY_RESPONSE_PREVIEW_LENGTH = 300  # Characters to return per history item
 
 
 
@@ -36,7 +37,7 @@ async def list_history(
     return [
         HistoryResponse(
             id=str(r.id), query=r.query, intent=r.intent,
-            response=r.response[:300], created_at=r.created_at.isoformat(),
+            response=r.response[:HISTORY_RESPONSE_PREVIEW_LENGTH], created_at=r.created_at.isoformat(),
         )
         for r in rows
     ]

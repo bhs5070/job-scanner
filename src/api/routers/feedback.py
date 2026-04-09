@@ -1,6 +1,7 @@
 """User feedback API router."""
 
 import uuid
+from typing import Literal
 
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel
@@ -14,7 +15,7 @@ router = APIRouter(prefix="/api/feedback", tags=["feedback"])
 
 class FeedbackRequest(BaseModel):
     session_id: str
-    feedback: str  # "positive" or "negative"
+    feedback: Literal["positive", "negative"]
     reason: str | None = None
 
 

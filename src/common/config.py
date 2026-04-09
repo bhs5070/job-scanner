@@ -36,6 +36,7 @@ class Settings(BaseSettings):
 
     # Auth
     AUTH_SECRET_KEY: str = "change-me-in-production-use-secrets-token-hex-32"
+    AUTH_TOKEN_MAX_AGE: int = 86400  # 24 hours in seconds
 
     # General
     LOG_LEVEL: str = "INFO"

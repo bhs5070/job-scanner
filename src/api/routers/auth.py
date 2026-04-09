@@ -44,8 +44,7 @@ def _verify_token(token: str) -> dict | None:
         if not hmac.compare_digest(sig, expected):
             return None
         data = json.loads(payload)
-        # Check expiry (24 hours)
-        if time.time() - data.get("iat", 0) > 86400:
+        if time.time() - data.get("iat", 0) > settings.AUTH_TOKEN_MAX_AGE:
             return None
         return data
     except Exception:
@@ -120,7 +119,7 @@ async def google_callback(code: str) -> RedirectResponse:
         "auth_token", auth_token,
         httponly=True,
         samesite="lax",
-        max_age=86400,
+        max_age=settings.AUTH_TOKEN_MAX_AGE,
         path="/",
     )
     return response
